@@ -1,115 +1,131 @@
-import Image from "next/image";
-import { Geist, Geist_Mono } from "next/font/google";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// pages/index.js - Beautiful landing page
+import Head from 'next/head'
+import { useState } from 'react'
 
 export default function Home() {
+  const [email, setEmail] = useState('')
+  const [isSubmitted, setIsSubmitted] = useState(false)
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    // For now, just show success message
+    // Later: integrate with email service
+    setIsSubmitted(true)
+  }
+
   return (
-    <div
-      className={`${geistSans.className} ${geistMono.className} grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]`}
-    >
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              pages/index.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+    <>
+      <Head>
+        <title>Tattoo Designs AI - Create Your Dream Tattoo with AI</title>
+        <meta name="description" content="Generate unique, personalized tattoo designs using AI. From idea to ink in seconds." />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+        {/* Header */}
+        <header className="container mx-auto px-4 py-6">
+          <nav className="flex justify-between items-center">
+            <div className="text-2xl font-bold text-white">
+              Tattoo Designs AI
+            </div>
+            <button className="bg-white text-purple-900 px-6 py-2 rounded-full font-semibold hover:bg-gray-100 transition-colors">
+              Coming Soon
+            </button>
+          </nav>
+        </header>
+
+        {/* Hero Section */}
+        <main className="container mx-auto px-4 py-20">
+          <div className="text-center max-w-4xl mx-auto">
+            {/* Main Headline */}
+            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
+              Create Your Dream
+              <span className="bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent block">
+                Tattoo with AI
+              </span>
+            </h1>
+
+            {/* Subheadline */}
+            <p className="text-xl md:text-2xl text-gray-300 mb-12 max-w-2xl mx-auto">
+              Generate unique, personalized tattoo designs in seconds. 
+              From simple ideas to complex artwork - powered by artificial intelligence.
+            </p>
+
+            {/* Features Grid */}
+            <div className="grid md:grid-cols-3 gap-8 mb-16">
+              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
+                <div className="text-4xl mb-4">⚡</div>
+                <h3 className="text-xl font-semibold text-white mb-2">Instant Generation</h3>
+                <p className="text-gray-300">Get unique designs in under 30 seconds</p>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
+                <div className="text-4xl mb-4">🎨</div>
+                <h3 className="text-xl font-semibold text-white mb-2">Multiple Styles</h3>
+                <p className="text-gray-300">Traditional, minimalist, geometric, and more</p>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
+                <div className="text-4xl mb-4">💎</div>
+                <h3 className="text-xl font-semibold text-white mb-2">100% Unique</h3>
+                <p className="text-gray-300">Every design is original and personalized</p>
+              </div>
+            </div>
+
+            {/* Email Signup */}
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 max-w-md mx-auto border border-white/20">
+              <h2 className="text-2xl font-bold text-white mb-4">Get Early Access</h2>
+              
+              {!isSubmitted ? (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    required
+                    className="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  />
+                  <button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all duration-200 transform hover:scale-105"
+                  >
+                    Notify Me When Ready 🚀
+                  </button>
+                </form>
+              ) : (
+                <div className="text-center">
+                  <div className="text-4xl mb-4">✅</div>
+                  <h3 className="text-xl font-semibold text-white mb-2">You're on the list!</h3>
+                  <p className="text-gray-300">We'll notify you when Tattoo Designs AI launches.</p>
+                </div>
+              )}
+              
+              <p className="text-sm text-gray-400 mt-4">
+                Join 100+ people waiting for launch
+              </p>
+            </div>
+
+            {/* Social Proof */}
+            <div className="mt-16 text-center">
+              <p className="text-gray-400 mb-4">Powered by cutting-edge AI technology</p>
+              <div className="flex justify-center space-x-8 opacity-60">
+                <div className="text-white font-semibold">OpenAI</div>
+                <div className="text-white font-semibold">Stable Diffusion</div>
+                <div className="text-white font-semibold">Neural Networks</div>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        {/* Footer */}
+        <footer className="container mx-auto px-4 py-8 border-t border-white/20">
+          <div className="text-center text-gray-400">
+            <p>&copy; 2025 Tattoo Designs AI. Built with passion for ink and innovation.</p>
+          </div>
+        </footer>
+      </div>
+    </>
+  )
 }
