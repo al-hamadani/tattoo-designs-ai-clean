@@ -97,8 +97,8 @@ export default function Home() {
               ) : (
                 <div className="text-center">
                   <div className="text-4xl mb-4">✅</div>
-                  <h3 className="text-xl font-semibold text-white mb-2">You're on the list!</h3>
-                  <p className="text-gray-300">We'll notify you when Tattoo Designs AI launches.</p>
+                  <h3 className="text-xl font-semibold text-white mb-2">You&apos; on the list!</h3>
+                  <p className="text-gray-300">We&apos;ll notify you when Tattoo Designs AI launches.</p>
                 </div>
               )}
               
