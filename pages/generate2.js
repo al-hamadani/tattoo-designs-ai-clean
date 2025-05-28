@@ -16,6 +16,7 @@ export default function Generate() {
   const [selectedDesign, setSelectedDesign] = useState(null)
   const [showAR, setShowAR] = useState(false)
   const [favorites, setFavorites] = useState([])
+  const [error, setError] = useState('')
   
   const promptInputRef = useRef(null)
 
@@ -59,20 +60,54 @@ export default function Generate() {
     }
 
     setIsGenerating(true)
+    setError('')
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // Call the actual API
+      const response = await fetch('/api/generate-tattoo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          style: selectedStyle === 'all' ? undefined : selectedStyle,
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to generate design');
+      }
+
+      // Create multiple designs with the same base image but different metadata
+      const newDesigns = Array(4).fill(null).map((_, i) => ({
+        id: Date.now() + i,
+        prompt: prompt,
+        style: selectedStyle === 'all' ? styles[Math.floor(Math.random() * (styles.length - 1)) + 1].id : selectedStyle,
+        url: data.imageURL,
+        liked: false
+      }));
+      
+      setGeneratedDesigns(newDesigns);
+    } catch (err) {
+      console.error('Generation error:', err);
+      setError(err.message || 'Failed to generate tattoo design. Please try again.');
+      
+      // Fallback to placeholder designs if API fails
       const newDesigns = Array(4).fill(null).map((_, i) => ({
         id: Date.now() + i,
         prompt: prompt,
         style: selectedStyle === 'all' ? styles[Math.floor(Math.random() * (styles.length - 1)) + 1].id : selectedStyle,
         url: `/api/placeholder/400/400?text=Design${i + 1}`,
         liked: false
-      }))
+      }));
       
-      setGeneratedDesigns(newDesigns)
-      setIsGenerating(false)
-    }, 3000)
+      setGeneratedDesigns(newDesigns);
+    } finally {
+      setIsGenerating(false);
+    }
   }
 
   const toggleFavorite = (designId) => {
@@ -111,8 +146,8 @@ export default function Generate() {
               <Link href="/gallery" className="text-gray-600 hover:text-gray-900 transition-colors">
                 Gallery
               </Link>
-              <Link href="/account" className="text-gray-600 hover:text-gray-900 transition-colors">
-                Account
+              <Link href="/styles" className="text-gray-600 hover:text-gray-900 transition-colors">
+                Styles
               </Link>
             </div>
           </div>
@@ -134,6 +169,17 @@ export default function Generate() {
               Describe your vision and watch it come to life
             </p>
           </motion.div>
+
+          {/* Error Message */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-2xl mx-auto mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700"
+            >
+              {error}
+            </motion.div>
+          )}
 
           {/* Main Input Section */}
           <motion.div 
@@ -287,9 +333,17 @@ export default function Generate() {
                     onClick={() => setSelectedDesign(design)}
                   >
                     <div className="aspect-square bg-gray-100 relative">
-                      <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
-                        <span className="text-gray-500">Design Preview</span>
-                      </div>
+                      {design.url.includes('placeholder') ? (
+                        <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center">
+                          <span className="text-gray-500">Design Preview</span>
+                        </div>
+                      ) : (
+                        <img 
+                          src={design.url} 
+                          alt={`Generated tattoo design ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={(e) => {
@@ -318,7 +372,13 @@ export default function Generate() {
                   <RefreshCw className="w-4 h-4" />
                   Generate More
                 </button>
-                <button className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors">
+                <button 
+                  onClick={() => {
+                    setPrompt('')
+                    promptInputRef.current?.focus()
+                  }}
+                  className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                >
                   Try Different Prompt
                 </button>
               </div>
@@ -346,7 +406,15 @@ export default function Generate() {
                     {/* Design Preview */}
                     <div className="md:w-1/2 bg-gray-100 relative">
                       <div className="aspect-square flex items-center justify-center">
-                        <span className="text-gray-500">Design Preview</span>
+                        {selectedDesign.url.includes('placeholder') ? (
+                          <span className="text-gray-500 text-xl">Full Design Preview</span>
+                        ) : (
+                          <img 
+                            src={selectedDesign.url} 
+                            alt="Full tattoo design"
+                            className="w-full h-full object-contain p-8"
+                          />
+                        )}
                       </div>
                     </div>
 
