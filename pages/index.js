@@ -1,5 +1,6 @@
 // pages/index.js - Beautiful landing page
 import Head from 'next/head'
+import TattooGenerator from '../components/TattooGenerator'
 import { useState } from 'react'
 
 export default function Home() {
@@ -72,7 +73,9 @@ export default function Home() {
                 <p className="text-gray-300">Every design is original and personalized</p>
               </div>
             </div>
-
+            <div className="mb-16">
+              <TattooGenerator />
+            </div>
             {/* Email Signup */}
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 max-w-md mx-auto border border-white/20">
               <h2 className="text-2xl font-bold text-white mb-4">Get Early Access</h2>
