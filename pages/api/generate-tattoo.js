@@ -1,4 +1,4 @@
-// pages/api/generate-tattoo.js - WITH REQUIRED taskUUID
+// pages/api/generate-tattoo.js - Enhanced for advanced features
 import { randomUUID } from 'crypto';
 
 export default async function handler(req, res) {
@@ -6,20 +6,26 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const { prompt, style = 'traditional' } = req.body;
+  const { prompt, style, complexity, placement, size } = req.body;
 
   if (!prompt) {
     return res.status(400).json({ message: 'Prompt is required' });
   }
 
   try {
-    const tattooPrompt = `${prompt}, ${style} tattoo style, black and white tattoo design, clean lines, tattoo art, high contrast`;
+    // Enhanced prompt processing
+    let enhancedPrompt = prompt;
+    
+    // Add consistent background and quality markers
+    enhancedPrompt += ', professional tattoo design, clean white background, high contrast black ink, stencil ready, tattoo art';
+    
+    // Add negative prompt for consistency
+    const negativePrompt = 'blurry, low quality, colored background, text, watermark, signature, multiple tattoos, duplicate, copy';
 
-    // Generate unique UUID for this request
     const taskUUID = randomUUID();
     
-    console.log('Sending request with UUID:', taskUUID);
-    console.log('Prompt:', tattooPrompt);
+    console.log('Generating tattoo with enhanced prompt:', enhancedPrompt);
+    console.log('Task UUID:', taskUUID);
 
     const response = await fetch('https://api.runware.ai/v1', {
       method: 'POST',
@@ -31,25 +37,28 @@ export default async function handler(req, res) {
         {
           taskUUID: taskUUID,
           taskType: "imageInference",
-          positivePrompt: tattooPrompt,
+          positivePrompt: enhancedPrompt,
+          negativePrompt: negativePrompt,
           width: 512,
           height: 512,
           model: "runware:100@1",
-          numberResults: 1
+          numberResults: 1,
+          CFGScale: 7.5, // Improved adherence to prompt
+          steps: 25 // Better quality
         }
       ])
     });
 
-    console.log('Response status:', response.status);
+    console.log('API Response status:', response.status);
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.log('Error response:', errorText);
+      console.log('API Error response:', errorText);
       throw new Error(`API request failed: ${response.status} - ${errorText}`);
     }
 
     const result = await response.json();
-    console.log('API Response:', JSON.stringify(result, null, 2));
+    console.log('API Success response:', JSON.stringify(result, null, 2));
     
     // Check for errors in response
     if (result.errors && result.errors.length > 0) {
@@ -63,20 +72,36 @@ export default async function handler(req, res) {
 
     const imageURL = result.data[0].imageURL;
 
+    // Log success for analytics
+    console.log('Tattoo generated successfully:', {
+      style,
+      complexity,
+      placement,
+      size,
+      timestamp: new Date().toISOString()
+    });
+
     res.status(200).json({
       success: true,
       imageURL: imageURL,
-      prompt: tattooPrompt,
-      taskUUID: taskUUID
+      prompt: enhancedPrompt,
+      taskUUID: taskUUID,
+      metadata: {
+        style,
+        complexity,
+        placement,
+        size,
+        generatedAt: new Date().toISOString()
+      }
     });
 
   } catch (error) {
-    console.error('Full error:', error);
+    console.error('Tattoo generation error:', error);
     
     res.status(500).json({ 
       success: false, 
       message: 'Failed to generate tattoo design. Please try again.',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
 }
