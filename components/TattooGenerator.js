@@ -1,4 +1,3 @@
-// components/TattooGenerator.js
 import { useState } from 'react';
 
 const TattooGenerator = () => {
@@ -19,12 +18,12 @@ const TattooGenerator = () => {
   ];
 
   const examplePrompts = [
-    "A majestic wolf howling at the moon",
-    "Japanese cherry blossom branch",
-    "Geometric mandala with intricate patterns", 
-    "Small delicate butterfly on wrist",
-    "Viking compass with norse runes",
-    "Minimalist mountain landscape"
+    'A majestic wolf howling at the moon',
+    'Japanese cherry blossom branch',
+    'Geometric mandala with intricate patterns', 
+    'Small delicate butterfly on wrist',
+    'Viking compass with norse runes',
+    'Minimalist mountain landscape'
   ];
 
   const handleGenerate = async () => {
@@ -98,7 +97,6 @@ const TattooGenerator = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      {/* Header */}
       <div className="text-center">
         <h2 className="text-3xl font-bold text-white mb-2">
           AI Tattoo Generator
@@ -109,7 +107,6 @@ const TattooGenerator = () => {
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
-        {/* Input Section */}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 space-y-6">
           <div>
             <label className="block text-sm font-medium text-white mb-3">
@@ -160,7 +157,6 @@ const TattooGenerator = () => {
             )}
           </button>
 
-          {/* Example Prompts */}
           <div>
             <p className="text-sm text-gray-400 mb-2">Need inspiration? Try these:</p>
             <div className="grid grid-cols-1 gap-2">
@@ -170,14 +166,13 @@ const TattooGenerator = () => {
                   onClick={() => setPrompt(example)}
                   className="text-left text-sm text-blue-300 hover:text-blue-200 p-2 bg-white/5 rounded hover:bg-white/10 transition-colors"
                 >
-                  "{example}"
+                  {example}
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Result Section */}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
           <h3 className="text-lg font-medium text-white mb-4">
             Your Tattoo Design
@@ -192,6 +187,7 @@ const TattooGenerator = () => {
           {generatedImage ? (
             <div className="space-y-4">
               <div className="bg-white rounded-lg p-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={generatedImage}
                   alt="Generated tattoo design"
@@ -236,7 +232,6 @@ const TattooGenerator = () => {
         </div>
       </div>
 
-      {/* Back Button */}
       <div className="text-center">
         <button
           onClick={() => setShowGenerator(false)}
