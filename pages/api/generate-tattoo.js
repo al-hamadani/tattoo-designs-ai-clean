@@ -1,6 +1,6 @@
 // pages/api/generate-tattoo.js - Enhanced for advanced features
 import { randomUUID } from 'crypto';
-
+import { logAPIError } from '../../lib/sentry'
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
@@ -96,12 +96,17 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Tattoo generation error:', error);
+    // Log to Sentry with context
+    logAPIError('/api/generate-tattoo', error, {
+      prompt: req.body.prompt,
+      style: req.body.style,
+      complexity: req.body.complexity,
+    })
     
     res.status(500).json({ 
       success: false, 
       message: 'Failed to generate tattoo design. Please try again.',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-    });
-  }
+      errorId: Sentry.captureException(error), // Return error ID for support
+    })
+    }
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -6,6 +6,8 @@ import {
   Heart, Share2, Filter, TrendingUp, Clock, Award, 
   Grid3X3, Square, ChevronDown, X, Eye, Download
 } from 'lucide-react'
+import { CardSkeleton } from '../components/LoadingStates'
+import LazyImage from '../components/LazyImage'
 
 export default function Gallery() {
   const [selectedFilter, setSelectedFilter] = useState('trending')
@@ -13,6 +15,7 @@ export default function Gallery() {
   const [viewMode, setViewMode] = useState('grid')
   const [selectedDesign, setSelectedDesign] = useState(null)
   const [likedDesigns, setLikedDesigns] = useState([])
+  const [loading, setLoading] = useState(true)
 
   const filters = [
     { id: 'trending', name: 'Trending', icon: <TrendingUp className="w-4 h-4" /> },
@@ -45,8 +48,14 @@ export default function Gallery() {
     views: Math.floor(Math.random() * 2000) + 200,
     creator: ['Emma_ink', 'ArtistMike', 'TattooLover23', 'InkMaster', 'DesignPro'][Math.floor(Math.random() * 5)],
     createdAt: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000),
-    trending: Math.random() > 0.7
+    trending: Math.random() > 0.7,
+    imageUrl: `/api/placeholder/400/400?text=Design${i + 1}` // Add image URL
   }))
+
+  // Simulate loading
+  useEffect(() => {
+    setTimeout(() => setLoading(false), 1500)
+  }, [])
 
   const filteredItems = galleryItems
     .filter(item => selectedStyle === 'all' || item.style === selectedStyle)
@@ -188,72 +197,87 @@ export default function Gallery() {
               ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4' 
               : 'grid-cols-1 md:grid-cols-2'
           }`}>
-            {filteredItems.map((item, index) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="group cursor-pointer"
-                onClick={() => setSelectedDesign(item)}
-              >
-                <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all">
-                  <div className={`relative bg-gradient-to-br from-gray-100 to-gray-200 ${
-                    viewMode === 'grid' ? 'aspect-square' : 'aspect-[4/3]'
-                  }`}>
-                    {/* Design Preview */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-gray-500">Design Preview</span>
-                    </div>
-                    
-                    {/* Trending Badge */}
-                    {item.trending && (
-                      <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                        <TrendingUp className="w-3 h-3" />
-                        Trending
-                      </div>
-                    )}
+            {loading ? (
+              // Show skeletons while loading
+              Array.from({ length: 8 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))
+            ) : (
+              filteredItems.map((item, index) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="group cursor-pointer"
+                  onClick={() => setSelectedDesign(item)}
+                >
+                  <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all">
+                    <div className={`relative bg-gradient-to-br from-gray-100 to-gray-200 ${
+                      viewMode === 'grid' ? 'aspect-square' : 'aspect-[4/3]'
+                    }`}>
+                      {/* Design Preview with LazyImage */}
+                      <LazyImage
+                        src={item.imageUrl}
+                        alt={item.prompt}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        aspectRatio={viewMode === 'grid' ? 'aspect-square' : 'aspect-[4/3]'}
+                        fallback={
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-gray-500">Design Preview</span>
+                          </div>
+                        }
+                      />
+                      
+                      {/* Trending Badge */}
+                      {item.trending && (
+                        <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                          <TrendingUp className="w-3 h-3" />
+                          Trending
+                        </div>
+                      )}
 
-                    {/* Hover Overlay */}
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleLike(item.id)
-                        }}
-                        className="p-3 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors"
-                      >
-                        <Heart className={`w-5 h-5 ${
-                          likedDesigns.includes(item.id) ? 'fill-red-500 text-red-500' : 'text-gray-700'
-                        }`} />
-                      </button>
-                      <button className="p-3 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
-                        <Eye className="w-5 h-5 text-gray-700" />
-                      </button>
+                      {/* Hover Overlay */}
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleLike(item.id)
+                          }}
+                          className="p-3 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors"
+                        >
+                          <Heart className={`w-5 h-5 ${
+                            likedDesigns.includes(item.id) ? 'fill-red-500 text-red-500' : 'text-gray-700'
+                          }`} />
+                        </button>
+                        <button className="p-3 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors">
+                          <Eye className="w-5 h-5 text-gray-700" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-4">
+                      <p className="font-medium text-gray-900 mb-1 line-clamp-1">{item.prompt}</p>
+                      <p className="text-sm text-gray-600 mb-3">{item.style} Style</p>
+                      
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center gap-1 text-gray-500">
+                            <Heart className="w-4 h-4" />
+                            {item.likes}
+                          </span>
+                          <span className="flex items-center gap-1 text-gray-500">
+                            <Eye className="w-4 h-4" />
+                            {item.views}
+                          </span>
+                        </div>
+                        <span className="text-gray-400">{formatDate(item.createdAt)}</span>
+                      </div>
                     </div>
                   </div>
-
-                  <div className="p-4">
-                    <p className="font-medium text-gray-900 mb-1 line-clamp-1">{item.prompt}</p>
-                    <p className="text-sm text-gray-600 mb-3">{item.style} Style</p>
-                    
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-3">
-                        <span className="flex items-center gap-1 text-gray-500">
-                          <Heart className="w-4 h-4" />
-                          {item.likes}
-                        </span>
-                        <span className="flex items-center gap-1 text-gray-500">
-                          <Eye className="w-4 h-4" />
-                          {item.views}
-                        </span>
-                      </div>
-                      <span className="text-gray-400">{formatDate(item.createdAt)}</span>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              ))
+            )}
           </div>
 
           {/* Load More */}
@@ -291,7 +315,15 @@ export default function Gallery() {
                       <X className="w-5 h-5" />
                     </button>
                     <div className="aspect-square flex items-center justify-center">
-                      <span className="text-gray-500 text-xl">Full Design Preview</span>
+                      <LazyImage
+                        src={selectedDesign.imageUrl}
+                        alt={selectedDesign.prompt}
+                        className="w-full h-full object-contain p-8"
+                        aspectRatio="aspect-square"
+                        fallback={
+                          <span className="text-gray-500 text-xl">Full Design Preview</span>
+                        }
+                      />
                     </div>
                   </div>
 

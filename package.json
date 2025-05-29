@@ -6,13 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postbuild": "next-sitemap"
   },
   "dependencies": {
     "@tailwindcss/line-clamp": "^0.4.4",
     "framer-motion": "^10.18.0",
     "lucide-react": "^0.294.0",
     "next": "14.0.4",
+    "nprogress": "^0.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

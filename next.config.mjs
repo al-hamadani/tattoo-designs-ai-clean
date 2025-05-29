@@ -1,6 +1,16 @@
-/** @type {import('next').NextConfig} */
+import { withSentryConfig } from '@sentry/nextjs'
+
 const nextConfig = {
   reactStrictMode: true,
-};
+}
 
-export default nextConfig;
+const sentryWebpackPluginOptions = {
+  org: 'your-org-name',
+  project: 'tattoodesignsai',
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: true,
+  hideSourceMaps: true,
+  disableLogger: true,
+}
+
+export default withSentryConfig(nextConfig, sentryWebpackPluginOptions)

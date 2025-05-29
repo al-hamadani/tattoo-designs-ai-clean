@@ -7,7 +7,7 @@ import {
   ChevronLeft, ChevronRight, Maximize2, Camera, Loader2,
   Palette, Zap, Eye, Settings, Info
 } from 'lucide-react'
-
+import SEO from '../components/SEO'
 export default function Generate() {
   const [prompt, setPrompt] = useState('')
   const [primaryStyle, setPrimaryStyle] = useState('traditional')
@@ -329,6 +329,12 @@ export default function Generate() {
         <title>Generate Your Tattoo Design - TattooDesignsAI</title>
         <meta name="description" content="Create unique tattoo designs with AI. Describe your idea and get instant, personalized tattoo artwork with 20+ styles and advanced options." />
       </Head>
+
+      <SEO 
+        title="Generate Your Tattoo Design"
+        description="Create custom tattoo designs with AI. Choose from 20+ styles including minimalist, traditional, geometric, and more. Free to try!"
+        keywords="tattoo generator, AI tattoo design, custom tattoo, tattoo creator online"
+      />
 
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100">

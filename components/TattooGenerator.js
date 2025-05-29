@@ -1,5 +1,7 @@
-// components/TattooGenerator.js - Enhanced with 20+ styles and advanced features
+// components/TattooGenerator.js - Enhanced with loading states
 import { useState, useRef } from 'react';
+import { ButtonLoading, GenerationProgress } from './LoadingStates';
+import LazyImage from './LazyImage';
 
 const TattooGenerator = () => {
   const [prompt, setPrompt] = useState('');
@@ -14,6 +16,7 @@ const TattooGenerator = () => {
   const [error, setError] = useState('');
   const [showGenerator, setShowGenerator] = useState(false);
   const [showARPreview, setShowARPreview] = useState(false);
+  const [generationStage, setGenerationStage] = useState('preparing');
   const videoRef = useRef(null);
 
   // 20+ Artistic Styles
@@ -167,7 +170,13 @@ const TattooGenerator = () => {
     setError('');
     setGeneratedImage(null);
     
+    // Simulate generation stages
+    setGenerationStage('preparing');
+    
     try {
+      // Update stage after 500ms
+      setTimeout(() => setGenerationStage('generating'), 500);
+      
       const uniquePrompt = generateUniquePrompt();
       setGeneratedPrompt(uniquePrompt);
       
@@ -182,16 +191,26 @@ const TattooGenerator = () => {
         })
       });
 
+      // Update stage before getting result
+      setGenerationStage('enhancing');
+
       const data = await response.json();
 
       if (!data.success) {
         throw new Error(data.message || 'Generation failed');
       }
 
-      setGeneratedImage(data.imageURL);
+      // Final stage
+      setGenerationStage('finalizing');
+      
+      // Small delay to show the final stage
+      setTimeout(() => {
+        setGeneratedImage(data.imageURL);
+        setIsGenerating(false);
+      }, 500);
+      
     } catch (err) {
       setError(err.message || 'Failed to generate tattoo. Please try again.');
-    } finally {
       setIsGenerating(false);
     }
   };
@@ -380,21 +399,16 @@ const TattooGenerator = () => {
             </div>
           </div>
 
-          {/* Generate Button */}
-          <button
+          {/* Generate Button with Loading State */}
+          <ButtonLoading
             onClick={handleGenerate}
-            disabled={isGenerating || !prompt.trim()}
+            isLoading={isGenerating}
+            loadingText={`Creating your unique ${primaryStyle} design...`}
+            disabled={!prompt.trim()}
             className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 px-6 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600 disabled:bg-gray-500 disabled:cursor-not-allowed transition-all duration-200"
           >
-            {isGenerating ? (
-              <div className="flex items-center justify-center space-x-2">
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Creating your unique {primaryStyle} design...</span>
-              </div>
-            ) : (
-              '✨ Generate Unique Design'
-            )}
-          </button>
+            ✨ Generate Unique Design
+          </ButtonLoading>
 
           {/* Example Prompts */}
           <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
@@ -426,14 +440,18 @@ const TattooGenerator = () => {
               </div>
             )}
 
-            {generatedImage ? (
+            {isGenerating ? (
+              <div className="flex flex-col items-center justify-center h-64">
+                <GenerationProgress stage={generationStage} />
+              </div>
+            ) : generatedImage ? (
               <div className="space-y-4">
                 <div className="bg-white rounded-lg p-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <LazyImage
                     src={generatedImage}
                     alt="Generated tattoo design"
                     className="w-full h-auto rounded-lg"
+                    aspectRatio="aspect-square"
                   />
                 </div>
                 
@@ -474,10 +492,7 @@ const TattooGenerator = () => {
               <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                 <div className="text-4xl mb-4">🎨</div>
                 <p className="text-center text-sm">
-                  {isGenerating 
-                    ? 'AI is crafting your masterpiece...' 
-                    : 'Describe your vision and watch it come to life'
-                  }
+                  Describe your vision and watch it come to life
                 </p>
               </div>
             )}
@@ -500,11 +515,11 @@ const TattooGenerator = () => {
               />
               {generatedImage && (
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-70">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <LazyImage
                     src={generatedImage}
                     alt="Tattoo overlay"
                     className="w-24 h-24 object-contain"
+                    aspectRatio="aspect-square"
                   />
                 </div>
               )}

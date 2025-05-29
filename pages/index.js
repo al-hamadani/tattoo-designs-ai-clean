@@ -3,7 +3,7 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { ArrowRight, Sparkles, Zap, Eye, Layers, Download, Check } from 'lucide-react'
-
+import SEO from '../components/SEO'
 export default function Home() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [activeStyle, setActiveStyle] = useState(0)
@@ -34,6 +34,8 @@ export default function Home() {
         <meta name="description" content="Create unique AI-generated tattoo designs in seconds. Try on virtual tattoos with AR before getting inked. Free to start, no artistic skills needed." />
         <link rel="icon" href="/favicon.ico" />
       </Head>
+      
+      <SEO />
 
       {/* Navigation */}
       <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-white/80 backdrop-blur-lg shadow-sm' : 'bg-transparent'}`}>
