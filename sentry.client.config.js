@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
+import { Replay } from '@sentry/replay'
 
 const SENTRY_DSN = process.env.NEXT_PUBLIC_SENTRY_DSN
 
@@ -17,7 +18,7 @@ Sentry.init({
   release: process.env.NEXT_PUBLIC_COMMIT_SHA,
   
   integrations: [
-    new Sentry.Replay({
+    new Replay({
       maskAllText: true,
       blockAllMedia: true,
     }),
@@ -27,7 +28,7 @@ Sentry.init({
   ignoreErrors: [
     'ResizeObserver loop limit exceeded',
     'Non-Error promise rejection captured',
-    /Failed to fetch/,
+    '/Failed to fetch/',
   ],
   
   beforeSend(event, hint) {

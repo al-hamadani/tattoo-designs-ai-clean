@@ -181,6 +181,6 @@ module.exports = {
     },
     plugins: [
       // Add line-clamp plugin if needed
-      require('@tailwindcss/line-clamp'),
+     //require('@tailwindcss/line-clamp')
     ],
   }
