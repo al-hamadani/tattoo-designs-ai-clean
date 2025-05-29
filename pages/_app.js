@@ -1,22 +1,23 @@
 import '../styles/globals.css'
 import Head from 'next/head'
 import GoogleAnalytics from '../components/GoogleAnalytics'
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/router'
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
+
 // Configure NProgress
 NProgress.configure({ 
   showSpinner: false,
   trickleSpeed: 200,
   minimum: 0.2
 })
-// Optional: Add analytics, error tracking, etc.
+
 export default function App({ Component, pageProps }) {
   const router = useRouter()
   
   useEffect(() => {
-    // Handle route change events (for analytics, etc.)
+    // Handle route change events with progress bar
     const handleStart = () => NProgress.start()
     const handleStop = () => NProgress.done()
 
@@ -38,7 +39,6 @@ export default function App({ Component, pageProps }) {
     }
   }, [router.events])
 
-  // Add any global providers here (auth, theme, etc.)
   return (
     <>
       <Head>
@@ -65,8 +65,8 @@ export default function App({ Component, pageProps }) {
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:site" content="@tattoodesignsai" />
         
-         {/* Essential SEO */}
-         <meta name="description" content="Create unique AI tattoo designs in seconds. Try on with AR before getting inked. 20+ styles, free to start." />
+        {/* Essential SEO */}
+        <meta name="description" content="Create unique AI tattoo designs in seconds. Try on with AR before getting inked. 20+ styles, free to start." />
         <meta name="keywords" content="AI tattoo generator, tattoo design, virtual tattoo try on, tattoo ideas, custom tattoo creator" />
         
         {/* Schema.org markup */}
@@ -83,21 +83,10 @@ export default function App({ Component, pageProps }) {
             }
           })}
         </script>
-        {/* Fonts - System fonts are used, no external fonts needed */}
       </Head>
+      
       <GoogleAnalytics />
-
       <Component {...pageProps} />
     </>
   )
-}
-
-
-
-
-
-export default function App({ Component, pageProps }) {
-  
-
-  return <Component {...pageProps} />
 }
