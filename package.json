@@ -10,6 +10,7 @@
     "postbuild": "next-sitemap"
   },
   "dependencies": {
+    "@sentry/nextjs": "^9.23.0",
     "@tailwindcss/line-clamp": "^0.4.4",
     "framer-motion": "^10.18.0",
     "lucide-react": "^0.294.0",
