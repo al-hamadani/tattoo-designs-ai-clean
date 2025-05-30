@@ -5,19 +5,20 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/router'
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
-
-// Configure NProgress
-NProgress.configure({ 
-  showSpinner: false,
-  trickleSpeed: 200,
-  minimum: 0.2
-})
+import Script from 'next/script'
 
 export default function App({ Component, pageProps }) {
   const router = useRouter()
-  
+
   useEffect(() => {
-    // Handle route change events with progress bar
+    // NProgress config: client only, run once
+    NProgress.configure({
+      showSpinner: false,
+      trickleSpeed: 200,
+      minimum: 0.2,
+    })
+
+    // NProgress route handlers
     const handleStart = () => NProgress.start()
     const handleStop = () => NProgress.done()
 
@@ -25,53 +26,56 @@ export default function App({ Component, pageProps }) {
     router.events.on('routeChangeComplete', handleStop)
     router.events.on('routeChangeError', handleStop)
 
+    // Google Analytics page view
     const handleRouteChange = (url) => {
-      // Track page views, etc.
-      console.log('Route changed to:', url)
+      if (window.gtag) {
+        window.gtag('config', 'G-4QQTX8X3KT', {
+          page_path: url,
+        })
+      }
     }
-
     router.events.on('routeChangeComplete', handleRouteChange)
+
+    // Cleanup
     return () => {
-      router.events.off('routeChangeComplete', handleRouteChange)
       router.events.off('routeChangeStart', handleStart)
       router.events.off('routeChangeComplete', handleStop)
       router.events.off('routeChangeError', handleStop)
+      router.events.off('routeChangeComplete', handleRouteChange)
     }
   }, [router.events])
 
   return (
     <>
+      <Script
+        src="https://www.googletagmanager.com/gtag/js?id=G-4QQTX8X3KT"
+        strategy="afterInteractive"
+      />
+      <Script id="google-analytics" strategy="afterInteractive">
+        {`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-4QQTX8X3KT');
+        `}
+      </Script>
       <Head>
-        {/* Global Meta Tags */}
+        {/* ... your meta tags etc ... */}
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#0066FF" />
-        
-        {/* Favicons */}
         <link rel="icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-        
-        {/* Default SEO */}
         <meta name="robots" content="index, follow" />
         <meta name="author" content="TattooDesignsAI" />
-        
-        {/* Open Graph defaults */}
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="TattooDesignsAI" />
         <meta property="og:locale" content="en_US" />
-        
-        {/* Twitter Card defaults */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:site" content="@tattoodesignsai" />
-        
-        {/* Essential SEO */}
-        <meta name="description" content="Create unique AI tattoo designs in seconds. Try on with AR before getting inked. 20+ styles, free to start." />
-        <meta name="keywords" content="AI tattoo generator, tattoo design, virtual tattoo try on, tattoo ideas, custom tattoo creator" />
-        
-        {/* Schema.org markup */}
-        <script type="application/ld+json">
-          {JSON.stringify({
+        <script type="application/ld+json" dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "WebApplication",
             "name": "TattooDesignsAI",
@@ -81,10 +85,9 @@ export default function App({ Component, pageProps }) {
               "price": "0",
               "priceCurrency": "USD"
             }
-          })}
-        </script>
+          })
+        }} />
       </Head>
-      
       <GoogleAnalytics />
       <Component {...pageProps} />
     </>

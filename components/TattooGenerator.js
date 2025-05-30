@@ -1,139 +1,120 @@
-// components/TattooGenerator.js - Enhanced with loading states
-import { useState, useRef } from 'react';
-import { ButtonLoading, GenerationProgress } from './LoadingStates';
-import LazyImage from './LazyImage';
+// components/TattooGenerator.js
+
+import { useState, useRef } from 'react'
+import { ButtonLoading, GenerationProgress } from './LoadingStates'
+import LazyImage from './LazyImage'
+
+// --- Analytics Event Tracking ---
+const trackEvent = (eventName, parameters = {}) => {
+  if (typeof window !== 'undefined' && window.gtag) {
+    window.gtag('event', eventName, parameters)
+  }
+}
+
+const tattooStyles = [
+  { value: 'traditional', label: 'Traditional', description: 'Bold lines, bright colors, classic Americana' },
+  { value: 'neo-traditional', label: 'Neo-Traditional', description: 'Modern twist on traditional with more detail' },
+  { value: 'old-school', label: 'Old School', description: 'Vintage sailor tattoos, simple and bold' },
+  { value: 'realistic', label: 'Realistic', description: 'Photorealistic, highly detailed artwork' },
+  { value: 'portrait', label: 'Portrait', description: 'Detailed faces and figures' },
+  { value: 'surreal', label: 'Surreal', description: 'Dreamlike, impossible imagery' },
+  { value: 'minimalist', label: 'Minimalist', description: 'Clean, simple lines, less is more' },
+  { value: 'fine-line', label: 'Fine Line', description: 'Delicate, thin lines, elegant details' },
+  { value: 'single-needle', label: 'Single Needle', description: 'Ultra-fine detail work' },
+  { value: 'blackwork', label: 'Blackwork', description: 'Solid black designs, high contrast' },
+  { value: 'tribal', label: 'Tribal', description: 'Bold patterns, cultural significance' },
+  { value: 'gothic', label: 'Gothic', description: 'Dark, mysterious, medieval inspiration' },
+  { value: 'geometric', label: 'Geometric', description: 'Mathematical patterns, sacred geometry' },
+  { value: 'mandala', label: 'Mandala', description: 'Circular, spiritual patterns' },
+  { value: 'abstract', label: 'Abstract', description: 'Non-representational art' },
+  { value: 'japanese', label: 'Japanese', description: 'Irezumi style, koi, dragons, waves' },
+  { value: 'chinese', label: 'Chinese', description: 'Traditional Chinese motifs and symbolism' },
+  { value: 'celtic', label: 'Celtic', description: 'Knots, spirals, Irish heritage' },
+  { value: 'polynesian', label: 'Polynesian', description: 'Pacific island tribal patterns' },
+  { value: 'watercolor', label: 'Watercolor', description: 'Flowing colors, painterly effects' },
+  { value: 'sketch', label: 'Sketch', description: 'Rough, hand-drawn appearance' },
+  { value: 'dotwork', label: 'Dotwork', description: 'Stippling technique, dot patterns' },
+  { value: 'linework', label: 'Linework', description: 'Focus on clean, bold lines' },
+  { value: 'biomechanical', label: 'Biomechanical', description: 'Fusion of organic and mechanical' },
+  { value: 'new-school', label: 'New School', description: 'Cartoon-like, exaggerated features' },
+  { value: 'trash-polka', label: 'Trash Polka', description: 'Chaotic mix of realistic and abstract' }
+]
+
+const complexityLevels = [
+  { value: 'simple', label: 'Simple', description: 'Clean, basic design (1-3 elements)' },
+  { value: 'medium', label: 'Medium', description: 'Moderate detail (3-5 elements)' },
+  { value: 'complex', label: 'Complex', description: 'Highly detailed (5+ elements)' },
+  { value: 'masterpiece', label: 'Masterpiece', description: 'Maximum detail and artistry' }
+]
+
+const placementOptions = [
+  { value: 'generic', label: 'Generic Design', description: 'Standalone design' },
+  { value: 'forearm', label: 'Forearm', description: 'Vertical orientation, medium size' },
+  { value: 'bicep', label: 'Bicep', description: 'Curved placement, bold design' },
+  { value: 'shoulder', label: 'Shoulder', description: 'Circular/curved composition' },
+  { value: 'back', label: 'Back', description: 'Large canvas, detailed work' },
+  { value: 'chest', label: 'Chest', description: 'Symmetrical, powerful placement' },
+  { value: 'wrist', label: 'Wrist', description: 'Small, delicate design' },
+  { value: 'ankle', label: 'Ankle', description: 'Compact, elegant placement' },
+  { value: 'neck', label: 'Neck', description: 'Bold statement piece' },
+  { value: 'thigh', label: 'Thigh', description: 'Large area, detailed possibilities' },
+  { value: 'ribcage', label: 'Ribcage', description: 'Curved, flowing design' },
+  { value: 'calf', label: 'Calf', description: 'Vertical space, good visibility' }
+]
+
+const sizeOptions = [
+  { value: 'tiny', label: 'Tiny (1-2")', description: 'Coin-sized, minimal detail' },
+  { value: 'small', label: 'Small (2-4")', description: 'Palm-sized, simple elements' },
+  { value: 'medium', label: 'Medium (4-6")', description: 'Hand-sized, good detail' },
+  { value: 'large', label: 'Large (6-10")', description: 'Forearm-sized, complex detail' },
+  { value: 'extra-large', label: 'XL (10"+)', description: 'Major piece, maximum detail' }
+]
+
+const examplePrompts = [
+  'A majestic wolf howling at the moon',
+  'Japanese cherry blossom branch',
+  'Geometric mandala with lotus center',
+  'Minimalist mountain range silhouette',
+  'Celtic knot with hidden meaning',
+  'Watercolor butterfly transformation',
+  'Biomechanical arm enhancement',
+  'Traditional anchor with banner',
+  'Dotwork sunflower in bloom',
+  'Abstract ocean waves flow'
+]
 
 const TattooGenerator = () => {
-  const [prompt, setPrompt] = useState('');
-  const [primaryStyle, setPrimaryStyle] = useState('traditional');
-  const [secondaryStyle, setSecondaryStyle] = useState('none');
-  const [complexity, setComplexity] = useState('medium');
-  const [placement, setPlacement] = useState('generic');
-  const [size, setSize] = useState('medium');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedImage, setGeneratedImage] = useState(null);
-  const [generatedPrompt, setGeneratedPrompt] = useState('');
-  const [error, setError] = useState('');
-  const [showGenerator, setShowGenerator] = useState(false);
-  const [showARPreview, setShowARPreview] = useState(false);
-  const [generationStage, setGenerationStage] = useState('preparing');
-  const videoRef = useRef(null);
+  const [prompt, setPrompt] = useState('')
+  const [primaryStyle, setPrimaryStyle] = useState('traditional')
+  const [secondaryStyle, setSecondaryStyle] = useState('none')
+  const [complexity, setComplexity] = useState('medium')
+  const [placement, setPlacement] = useState('generic')
+  const [size, setSize] = useState('medium')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [generatedImage, setGeneratedImage] = useState(null)
+  const [generatedPrompt, setGeneratedPrompt] = useState('')
+  const [error, setError] = useState('')
+  const [showGenerator, setShowGenerator] = useState(false)
+  const [showARPreview, setShowARPreview] = useState(false)
+  const [generationStage, setGenerationStage] = useState('preparing')
+  const videoRef = useRef(null)
 
-  // 20+ Artistic Styles
-  const tattooStyles = [
-    // Classic Styles
-    { value: 'traditional', label: 'Traditional', description: 'Bold lines, bright colors, classic Americana' },
-    { value: 'neo-traditional', label: 'Neo-Traditional', description: 'Modern twist on traditional with more detail' },
-    { value: 'old-school', label: 'Old School', description: 'Vintage sailor tattoos, simple and bold' },
-    
-    // Fine Art Styles  
-    { value: 'realistic', label: 'Realistic', description: 'Photorealistic, highly detailed artwork' },
-    { value: 'portrait', label: 'Portrait', description: 'Detailed faces and figures' },
-    { value: 'surreal', label: 'Surreal', description: 'Dreamlike, impossible imagery' },
-    
-    // Minimalist & Clean
-    { value: 'minimalist', label: 'Minimalist', description: 'Clean, simple lines, less is more' },
-    { value: 'fine-line', label: 'Fine Line', description: 'Delicate, thin lines, elegant details' },
-    { value: 'single-needle', label: 'Single Needle', description: 'Ultra-fine detail work' },
-    
-    // Bold & Dark
-    { value: 'blackwork', label: 'Blackwork', description: 'Solid black designs, high contrast' },
-    { value: 'tribal', label: 'Tribal', description: 'Bold patterns, cultural significance' },
-    { value: 'gothic', label: 'Gothic', description: 'Dark, mysterious, medieval inspiration' },
-    
-    // Geometric & Abstract
-    { value: 'geometric', label: 'Geometric', description: 'Mathematical patterns, sacred geometry' },
-    { value: 'mandala', label: 'Mandala', description: 'Circular, spiritual patterns' },
-    { value: 'abstract', label: 'Abstract', description: 'Non-representational art' },
-    
-    // Cultural & Regional
-    { value: 'japanese', label: 'Japanese', description: 'Irezumi style, koi, dragons, waves' },
-    { value: 'chinese', label: 'Chinese', description: 'Traditional Chinese motifs and symbolism' },
-    { value: 'celtic', label: 'Celtic', description: 'Knots, spirals, Irish heritage' },
-    { value: 'polynesian', label: 'Polynesian', description: 'Pacific island tribal patterns' },
-    
-    // Artistic Techniques
-    { value: 'watercolor', label: 'Watercolor', description: 'Flowing colors, painterly effects' },
-    { value: 'sketch', label: 'Sketch', description: 'Rough, hand-drawn appearance' },
-    { value: 'dotwork', label: 'Dotwork', description: 'Stippling technique, dot patterns' },
-    { value: 'linework', label: 'Linework', description: 'Focus on clean, bold lines' },
-    
-    // Modern Styles
-    { value: 'biomechanical', label: 'Biomechanical', description: 'Fusion of organic and mechanical' },
-    { value: 'new-school', label: 'New School', description: 'Cartoon-like, exaggerated features' },
-    { value: 'trash-polka', label: 'Trash Polka', description: 'Chaotic mix of realistic and abstract' }
-  ];
-
-  // Complexity Levels
-  const complexityLevels = [
-    { value: 'simple', label: 'Simple', description: 'Clean, basic design (1-3 elements)' },
-    { value: 'medium', label: 'Medium', description: 'Moderate detail (3-5 elements)' },
-    { value: 'complex', label: 'Complex', description: 'Highly detailed (5+ elements)' },
-    { value: 'masterpiece', label: 'Masterpiece', description: 'Maximum detail and artistry' }
-  ];
-
-  // Placement Options
-  const placementOptions = [
-    { value: 'generic', label: 'Generic Design', description: 'Standalone design' },
-    { value: 'forearm', label: 'Forearm', description: 'Vertical orientation, medium size' },
-    { value: 'bicep', label: 'Bicep', description: 'Curved placement, bold design' },
-    { value: 'shoulder', label: 'Shoulder', description: 'Circular/curved composition' },
-    { value: 'back', label: 'Back', description: 'Large canvas, detailed work' },
-    { value: 'chest', label: 'Chest', description: 'Symmetrical, powerful placement' },
-    { value: 'wrist', label: 'Wrist', description: 'Small, delicate design' },
-    { value: 'ankle', label: 'Ankle', description: 'Compact, elegant placement' },
-    { value: 'neck', label: 'Neck', description: 'Bold statement piece' },
-    { value: 'thigh', label: 'Thigh', description: 'Large area, detailed possibilities' },
-    { value: 'ribcage', label: 'Ribcage', description: 'Curved, flowing design' },
-    { value: 'calf', label: 'Calf', description: 'Vertical space, good visibility' }
-  ];
-
-  // Size Options
-  const sizeOptions = [
-    { value: 'tiny', label: 'Tiny (1-2")', description: 'Coin-sized, minimal detail' },
-    { value: 'small', label: 'Small (2-4")', description: 'Palm-sized, simple elements' },
-    { value: 'medium', label: 'Medium (4-6")', description: 'Hand-sized, good detail' },
-    { value: 'large', label: 'Large (6-10")', description: 'Forearm-sized, complex detail' },
-    { value: 'extra-large', label: 'XL (10"+)', description: 'Major piece, maximum detail' }
-  ];
-
-  const examplePrompts = [
-    'A majestic wolf howling at the moon',
-    'Japanese cherry blossom branch',
-    'Geometric mandala with lotus center',
-    'Minimalist mountain range silhouette',
-    'Celtic knot with hidden meaning',
-    'Watercolor butterfly transformation',
-    'Biomechanical arm enhancement',
-    'Traditional anchor with banner',
-    'Dotwork sunflower in bloom',
-    'Abstract ocean waves flow'
-  ];
-
+  // --- Prompt Generation ---
   const generateUniquePrompt = () => {
-    const timestamp = Date.now();
-    const randomSeed = Math.random().toString(36).substring(7);
-    
-    let enhancedPrompt = prompt;
-    
-    // Add primary style
-    enhancedPrompt += `, ${primaryStyle} tattoo style`;
-    
-    // Add secondary style if selected
+    const randomSeed = Math.random().toString(36).substring(7)
+    let enhancedPrompt = prompt
+
+    enhancedPrompt += `, ${primaryStyle} tattoo style`
     if (secondaryStyle !== 'none') {
-      enhancedPrompt += ` with ${secondaryStyle} influences`;
+      enhancedPrompt += ` with ${secondaryStyle} influences`
     }
-    
-    // Add complexity
     const complexityMap = {
       simple: 'clean and simple',
       medium: 'moderate detail',
       complex: 'highly detailed',
       masterpiece: 'intricate masterpiece quality'
-    };
-    enhancedPrompt += `, ${complexityMap[complexity]}`;
-    
-    // Add placement considerations
+    }
+    enhancedPrompt += `, ${complexityMap[complexity]}`
     if (placement !== 'generic') {
       const placementMap = {
         forearm: 'designed for forearm placement, vertical composition',
@@ -147,111 +128,113 @@ const TattooGenerator = () => {
         thigh: 'designed for thigh placement, vertical emphasis',
         ribcage: 'designed for ribcage placement, curved flowing lines',
         calf: 'designed for calf placement, good proportions'
-      };
-      enhancedPrompt += `, ${placementMap[placement]}`;
+      }
+      enhancedPrompt += `, ${placementMap[placement]}`
     }
-    
-    // Add consistent background and style elements
-    enhancedPrompt += ', black and white tattoo design, clean white background, high contrast, professional tattoo art, stencil ready';
-    
-    // Add uniqueness seed
-    enhancedPrompt += `, unique design ${randomSeed}`;
-    
-    return enhancedPrompt;
-  };
+    enhancedPrompt += ', black and white tattoo design, clean white background, high contrast, professional tattoo art, stencil ready'
+    enhancedPrompt += `, unique design ${randomSeed}`
+    return enhancedPrompt
+  }
 
+  // --- Generate Handler ---
   const handleGenerate = async () => {
     if (!prompt.trim()) {
-      setError('Please describe your tattoo idea');
-      return;
+      setError('Please describe your tattoo idea')
+      return
     }
+    setIsGenerating(true)
+    setError('')
+    setGeneratedImage(null)
+    setGenerationStage('preparing')
 
-    setIsGenerating(true);
-    setError('');
-    setGeneratedImage(null);
-    
-    // Simulate generation stages
-    setGenerationStage('preparing');
-    
+    trackEvent('generate_tattoo_attempt', {
+      style: primaryStyle, complexity, placement, size
+    })
+
     try {
-      // Update stage after 500ms
-      setTimeout(() => setGenerationStage('generating'), 500);
-      
-      const uniquePrompt = generateUniquePrompt();
-      setGeneratedPrompt(uniquePrompt);
-      
+      setTimeout(() => setGenerationStage('generating'), 500)
+      const uniquePrompt = generateUniquePrompt()
+      setGeneratedPrompt(uniquePrompt)
       const response = await fetch('/api/generate-tattoo', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: uniquePrompt,
-          style: primaryStyle
+          style: primaryStyle,
+          complexity,
+          placement,
+          size
         })
-      });
+      })
 
-      // Update stage before getting result
-      setGenerationStage('enhancing');
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.message || 'Generation failed');
-      }
-
-      // Final stage
-      setGenerationStage('finalizing');
-      
-      // Small delay to show the final stage
+      setGenerationStage('enhancing')
+      const data = await response.json()
+      if (!data.success) throw new Error(data.message || 'Generation failed')
+      setGenerationStage('finalizing')
       setTimeout(() => {
-        setGeneratedImage(data.imageURL);
-        setIsGenerating(false);
-      }, 500);
-      
+        setGeneratedImage(data.imageURL)
+        setIsGenerating(false)
+      }, 500)
+
+      trackEvent('generate_tattoo_success', {
+        style: primaryStyle, complexity, placement, size
+      })
     } catch (err) {
-      setError(err.message || 'Failed to generate tattoo. Please try again.');
-      setIsGenerating(false);
+      setError(err.message || 'Failed to generate tattoo. Please try again.')
+      setIsGenerating(false)
+      trackEvent('generate_tattoo_error', {
+        error: err.message, style: primaryStyle, complexity, placement, size
+      })
     }
-  };
+  }
 
+  // --- Download Handler ---
   const downloadImage = async () => {
-    if (!generatedImage) return;
-    
+    if (!generatedImage) return
+    trackEvent('download_tattoo', { style: primaryStyle, complexity, placement, size })
     try {
-      const response = await fetch(generatedImage);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `tattoo-${primaryStyle}-${complexity}-${Date.now()}.jpg`;
-      link.click();
-      window.URL.revokeObjectURL(url);
+      const response = await fetch(generatedImage)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `tattoo-${primaryStyle}-${complexity}-${Date.now()}.jpg`
+      link.click()
+      window.URL.revokeObjectURL(url)
     } catch (error) {
-      console.error('Download failed:', error);
+      console.error('Download failed:', error)
     }
-  };
+  }
 
+  // --- AR Preview Handler ---
   const startARPreview = async () => {
+    trackEvent('ar_preview_started', { style: primaryStyle, complexity, placement, size })
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setShowARPreview(true);
+        videoRef.current.srcObject = stream
+        setShowARPreview(true)
       }
     } catch (error) {
-      alert('Camera access needed for AR preview. Please allow camera permissions.');
+      alert('Camera access needed for AR preview. Please allow camera permissions.')
     }
-  };
+  }
 
   const stopARPreview = () => {
     if (videoRef.current && videoRef.current.srcObject) {
-      const tracks = videoRef.current.srcObject.getTracks();
-      tracks.forEach(track => track.stop());
+      const tracks = videoRef.current.srcObject.getTracks()
+      tracks.forEach(track => track.stop())
     }
-    setShowARPreview(false);
-  };
+    setShowARPreview(false)
+  }
 
+  const handlePrimaryStyleChange = (e) => {
+    const newStyle = e.target.value
+    trackEvent('style_changed', { new_style: newStyle, old_style: primaryStyle })
+    setPrimaryStyle(newStyle)
+  }
+
+  // --- UI ---
   if (!showGenerator) {
     return (
       <div className="text-center">
@@ -265,7 +248,7 @@ const TattooGenerator = () => {
           20+ styles • AR try-on • Unlimited creativity
         </p>
       </div>
-    );
+    )
   }
 
   return (
@@ -279,7 +262,6 @@ const TattooGenerator = () => {
           20+ artistic styles • Complexity control • AR preview • 100% unique designs
         </p>
       </div>
-
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Controls Section */}
         <div className="lg:col-span-2 space-y-6">
@@ -290,7 +272,7 @@ const TattooGenerator = () => {
             </label>
             <textarea
               value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
+              onChange={e => setPrompt(e.target.value)}
               placeholder="e.g., A fierce dragon wrapped around a cherry blossom tree"
               className="w-full p-4 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none"
               rows={3}
@@ -300,7 +282,6 @@ const TattooGenerator = () => {
               {prompt.length}/300
             </div>
           </div>
-
           {/* Style Selection */}
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
@@ -309,10 +290,10 @@ const TattooGenerator = () => {
               </label>
               <select
                 value={primaryStyle}
-                onChange={(e) => setPrimaryStyle(e.target.value)}
+                onChange={handlePrimaryStyleChange}
                 className="w-full p-3 bg-white/20 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
               >
-                {tattooStyles.map((style) => (
+                {tattooStyles.map(style => (
                   <option key={style.value} value={style.value} className="bg-gray-800">
                     {style.label}
                   </option>
@@ -322,18 +303,17 @@ const TattooGenerator = () => {
                 {tattooStyles.find(s => s.value === primaryStyle)?.description}
               </p>
             </div>
-
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
               <label className="block text-sm font-medium text-white mb-3">
                 Mix with Style (Optional)
               </label>
               <select
                 value={secondaryStyle}
-                onChange={(e) => setSecondaryStyle(e.target.value)}
+                onChange={e => setSecondaryStyle(e.target.value)}
                 className="w-full p-3 bg-white/20 border border-white/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-400"
               >
                 <option value="none" className="bg-gray-800">None - Pure Style</option>
-                {tattooStyles.map((style) => (
+                {tattooStyles.map(style => (
                   <option key={style.value} value={style.value} className="bg-gray-800">
                     + {style.label}
                   </option>
@@ -344,7 +324,6 @@ const TattooGenerator = () => {
               </p>
             </div>
           </div>
-
           {/* Advanced Controls */}
           <div className="grid md:grid-cols-3 gap-4">
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
@@ -353,44 +332,42 @@ const TattooGenerator = () => {
               </label>
               <select
                 value={complexity}
-                onChange={(e) => setComplexity(e.target.value)}
+                onChange={e => setComplexity(e.target.value)}
                 className="w-full p-2 bg-white/20 border border-white/30 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
               >
-                {complexityLevels.map((level) => (
+                {complexityLevels.map(level => (
                   <option key={level.value} value={level.value} className="bg-gray-800">
                     {level.label}
                   </option>
                 ))}
               </select>
             </div>
-
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
               <label className="block text-sm font-medium text-white mb-2">
                 Placement
               </label>
               <select
                 value={placement}
-                onChange={(e) => setPlacement(e.target.value)}
+                onChange={e => setPlacement(e.target.value)}
                 className="w-full p-2 bg-white/20 border border-white/30 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
               >
-                {placementOptions.map((option) => (
+                {placementOptions.map(option => (
                   <option key={option.value} value={option.value} className="bg-gray-800">
                     {option.label}
                   </option>
                 ))}
               </select>
             </div>
-
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 border border-white/20">
               <label className="block text-sm font-medium text-white mb-2">
                 Size Guide
               </label>
               <select
                 value={size}
-                onChange={(e) => setSize(e.target.value)}
+                onChange={e => setSize(e.target.value)}
                 className="w-full p-2 bg-white/20 border border-white/30 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
               >
-                {sizeOptions.map((option) => (
+                {sizeOptions.map(option => (
                   <option key={option.value} value={option.value} className="bg-gray-800">
                     {option.label}
                   </option>
@@ -398,7 +375,6 @@ const TattooGenerator = () => {
               </select>
             </div>
           </div>
-
           {/* Generate Button with Loading State */}
           <ButtonLoading
             onClick={handleGenerate}
@@ -409,14 +385,13 @@ const TattooGenerator = () => {
           >
             ✨ Generate Unique Design
           </ButtonLoading>
-
           {/* Example Prompts */}
           <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
             <p className="text-sm text-gray-400 mb-3">🎯 Try these popular ideas:</p>
             <div className="grid md:grid-cols-2 gap-2">
-              {examplePrompts.slice(0, 6).map((example, index) => (
+              {examplePrompts.slice(0, 6).map((example, idx) => (
                 <button
-                  key={index}
+                  key={idx}
                   onClick={() => setPrompt(example)}
                   className="text-left text-sm text-blue-300 hover:text-blue-200 p-2 bg-white/5 rounded hover:bg-white/10 transition-colors"
                 >
@@ -426,20 +401,17 @@ const TattooGenerator = () => {
             </div>
           </div>
         </div>
-
         {/* Result Section */}
         <div className="lg:col-span-1">
           <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 sticky top-4">
             <h3 className="text-lg font-medium text-white mb-4">
               Your Unique Design
             </h3>
-            
             {error && (
               <div className="bg-red-500/20 border border-red-500/50 text-red-200 p-4 rounded-lg mb-4 text-sm">
                 {error}
               </div>
             )}
-
             {isGenerating ? (
               <div className="flex flex-col items-center justify-center h-64">
                 <GenerationProgress stage={generationStage} />
@@ -454,7 +426,6 @@ const TattooGenerator = () => {
                     aspectRatio="aspect-square"
                   />
                 </div>
-                
                 <div className="flex flex-col space-y-2">
                   <button
                     onClick={downloadImage}
@@ -462,25 +433,22 @@ const TattooGenerator = () => {
                   >
                     📥 Download HD Design
                   </button>
-                  
                   <button
                     onClick={startARPreview}
                     className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
                   >
                     📱 AR Try-On Preview
                   </button>
-                  
                   <button
                     onClick={() => {
-                      setGeneratedImage(null);
-                      setError('');
+                      setGeneratedImage(null)
+                      setError('')
                     }}
                     className="w-full bg-gray-600 text-white py-3 px-4 rounded-lg hover:bg-gray-700 transition-colors font-medium text-sm"
                   >
                     🔄 Generate Another
                   </button>
                 </div>
-
                 <div className="text-center text-xs text-gray-400 space-y-1 bg-white/5 rounded-lg p-3">
                   <p><strong>Style:</strong> {primaryStyle}{secondaryStyle !== 'none' ? ` + ${secondaryStyle}` : ''}</p>
                   <p><strong>Complexity:</strong> {complexity}</p>
@@ -499,7 +467,6 @@ const TattooGenerator = () => {
           </div>
         </div>
       </div>
-
       {/* AR Preview Modal */}
       {showARPreview && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
@@ -541,7 +508,6 @@ const TattooGenerator = () => {
           </div>
         </div>
       )}
-
       {/* Back Button */}
       <div className="text-center">
         <button
@@ -552,7 +518,7 @@ const TattooGenerator = () => {
         </button>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default TattooGenerator;
+export default TattooGenerator

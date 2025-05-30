@@ -1,6 +1,9 @@
-// pages/api/generate-tattoo.js - Enhanced for advanced features
 import { randomUUID } from 'crypto';
-import { logAPIError } from '../../lib/sentry'
+// Import Sentry logger if available
+import { logAPIError } from '../../lib/sentry';
+// If you use Sentry directly, uncomment the following line and setup Sentry SDK
+// import * as Sentry from '@sentry/nextjs';
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
@@ -13,17 +16,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Enhanced prompt processing
+    // Enhance the prompt
     let enhancedPrompt = prompt;
-    
-    // Add consistent background and quality markers
     enhancedPrompt += ', professional tattoo design, clean white background, high contrast black ink, stencil ready, tattoo art';
-    
-    // Add negative prompt for consistency
-    const negativePrompt = 'blurry, low quality, colored background, text, watermark, signature, multiple tattoos, duplicate, copy';
 
+    const negativePrompt = 'blurry, low quality, colored background, text, watermark, signature, multiple tattoos, duplicate, copy';
     const taskUUID = randomUUID();
-    
+
     console.log('Generating tattoo with enhanced prompt:', enhancedPrompt);
     console.log('Task UUID:', taskUUID);
 
@@ -35,22 +34,22 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify([
         {
-          taskUUID: taskUUID,
+          taskUUID,
           taskType: "imageInference",
           positivePrompt: enhancedPrompt,
-          negativePrompt: negativePrompt,
+          negativePrompt,
           width: 512,
           height: 512,
           model: "runware:100@1",
           numberResults: 1,
-          CFGScale: 7.5, // Improved adherence to prompt
-          steps: 25 // Better quality
+          CFGScale: 7.5,
+          steps: 25,
         }
-      ])
+      ]),
     });
 
     console.log('API Response status:', response.status);
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.log('API Error response:', errorText);
@@ -59,54 +58,63 @@ export default async function handler(req, res) {
 
     const result = await response.json();
     console.log('API Success response:', JSON.stringify(result, null, 2));
-    
-    // Check for errors in response
+
     if (result.errors && result.errors.length > 0) {
       throw new Error(`API Error: ${result.errors[0].message}`);
     }
 
-    // Check for data
     if (!result.data || !result.data[0] || !result.data[0].imageURL) {
       throw new Error('No image data received from API');
     }
 
     const imageURL = result.data[0].imageURL;
 
-    // Log success for analytics
+    // Success analytics/logging
     console.log('Tattoo generated successfully:', {
-      style,
-      complexity,
-      placement,
-      size,
-      timestamp: new Date().toISOString()
+      style: style || 'unknown',
+      complexity: complexity || 'medium',
+      placement: placement || 'generic',
+      size: size || 'medium',
+      timestamp: new Date().toISOString(),
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      imageURL: imageURL,
+      imageURL,
       prompt: enhancedPrompt,
-      taskUUID: taskUUID,
+      taskUUID,
       metadata: {
         style,
         complexity,
         placement,
         size,
-        generatedAt: new Date().toISOString()
-      }
+        generatedAt: new Date().toISOString(),
+      },
     });
 
   } catch (error) {
-    // Log to Sentry with context
-    logAPIError('/api/generate-tattoo', error, {
-      prompt: req.body.prompt,
-      style: req.body.style,
-      complexity: req.body.complexity,
-    })
-    
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to generate tattoo design. Please try again.',
-      errorId: Sentry.captureException(error), // Return error ID for support
-    })
+    console.error('Tattoo generation error:', error);
+
+    // Sentry error tracking (optional)
+    let errorId;
+    if (typeof logAPIError === 'function') {
+      logAPIError('/api/generate-tattoo', error, {
+        prompt,
+        style,
+        complexity,
+        placement,
+        size,
+      });
+      // If you use Sentry directly, you can get errorId like this:
+      // errorId = Sentry.captureException(error);
     }
+
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to generate tattoo design. Please try again.',
+      // Uncomment below if you use Sentry's captureException and want to return errorId
+      // errorId: errorId || undefined,
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
+    });
+  }
 }
