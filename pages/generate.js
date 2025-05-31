@@ -1,4 +1,4 @@
-// pages/generate.js
+// pages/generate.js - With ADVANCED controls and Detail Modal, using FIXED components
 import { useState, useRef } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
@@ -9,8 +9,8 @@ import {
   Palette, Zap, Eye, Settings, Info
 } from 'lucide-react'
 import SEO from '../components/SEO'
-import SocialSharing from '../components/SocialSharing'
-import EnhancedARPreview from '../components/EnhancedARPreview'
+import RealSocialSharing from '../components/RealSocialSharing'
+import RealisticARPreview from '../components/RealisticARPreview'
 
 export default function Generate() {
   const [prompt, setPrompt] = useState('')
@@ -27,8 +27,8 @@ export default function Generate() {
   const [favorites, setFavorites] = useState([])
   const [error, setError] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
+  
   const promptInputRef = useRef(null)
-  const videoRef = useRef(null)
 
   // Artistic Styles
   const tattooStyles = [
@@ -59,16 +59,12 @@ export default function Generate() {
     { value: 'new-school', label: 'New School', description: 'Cartoon-like, exaggerated features' },
     { value: 'trash-polka', label: 'Trash Polka', description: 'Chaotic mix of realistic and abstract' }
   ]
-
-  // Complexity Levels
   const complexityLevels = [
     { value: 'simple', label: 'Simple', description: 'Clean, basic design (1-3 elements)' },
     { value: 'medium', label: 'Medium', description: 'Moderate detail (3-5 elements)' },
     { value: 'complex', label: 'Complex', description: 'Highly detailed (5+ elements)' },
     { value: 'masterpiece', label: 'Masterpiece', description: 'Maximum detail and artistry' }
   ]
-
-  // Placement Options
   const placementOptions = [
     { value: 'generic', label: 'Generic Design', description: 'Standalone design' },
     { value: 'forearm', label: 'Forearm', description: 'Vertical orientation, medium size' },
@@ -83,56 +79,31 @@ export default function Generate() {
     { value: 'ribcage', label: 'Ribcage', description: 'Curved, flowing design' },
     { value: 'calf', label: 'Calf', description: 'Vertical space, good visibility' }
   ]
-
-  // Size Options
   const sizeOptions = [
-    { value: 'tiny', label: 'Tiny (1-2")', description: 'Coin-sized, minimal detail' },
-    { value: 'small', label: 'Small (2-4")', description: 'Palm-sized, simple elements' },
-    { value: 'medium', label: 'Medium (4-6")', description: 'Hand-sized, good detail' },
-    { value: 'large', label: 'Large (6-10")', description: 'Forearm-sized, complex detail' },
-    { value: 'extra-large', label: 'XL (10"+)', description: 'Major piece, maximum detail' }
+    { value: 'tiny', label: 'Tiny (1-2\")', description: 'Coin-sized, minimal detail' },
+    { value: 'small', label: 'Small (2-4\")', description: 'Palm-sized, simple elements' },
+    { value: 'medium', label: 'Medium (4-6\")', description: 'Hand-sized, good detail' },
+    { value: 'large', label: 'Large (6-10\")', description: 'Forearm-sized, complex detail' },
+    { value: 'extra-large', label: 'XL (10\"+)', description: 'Major piece, maximum detail' }
   ]
-
   const examplePrompts = [
     'A majestic wolf howling at the moon',
     'Japanese cherry blossom branch with falling petals',
     'Geometric mandala with lotus flower center',
     'Minimalist mountain range silhouette with sunrise',
     'Celtic knot with hidden trinity symbol',
-    'Watercolor butterfly emerging from chrysalis',
-    'Biomechanical heart with gears and circuits',
-    'Traditional nautical anchor with vintage banner',
-    'Dotwork sunflower in full bloom',
-    'Abstract ocean waves with geometric elements',
-    'Phoenix rising from flames',
-    'Delicate constellation map with star connections'
+    'Watercolor butterfly emerging from chrysalis'
   ]
 
-  // New: Social Sharing modal & Enhanced AR modal handlers
-  const handleShareClick = (design) => {
-    setSelectedDesign(design)
-    setShowSocialSharing(true)
-  }
-  const handleARClick = (design) => {
-    setSelectedDesign(design)
-    setShowAR(true)
-  }
-
-  // Generate prompt with style/size/complexity context
+  // Build prompt for API
   const generateUniquePrompt = () => {
     const timestamp = Date.now()
     const randomSeed = Math.random().toString(36).substring(7)
     let enhancedPrompt = prompt
-
-    // Add primary style
     enhancedPrompt += `, ${primaryStyle} tattoo style`
-
-    // Add secondary style if selected
     if (secondaryStyle !== 'none') {
       enhancedPrompt += ` with ${secondaryStyle} influences`
     }
-
-    // Add complexity
     const complexityMap = {
       simple: 'clean and simple',
       medium: 'moderate detail',
@@ -140,8 +111,6 @@ export default function Generate() {
       masterpiece: 'intricate masterpiece quality'
     }
     enhancedPrompt += `, ${complexityMap[complexity]}`
-
-    // Add placement considerations
     if (placement !== 'generic') {
       const placementMap = {
         forearm: 'designed for forearm placement, vertical composition',
@@ -158,8 +127,6 @@ export default function Generate() {
       }
       enhancedPrompt += `, ${placementMap[placement]}`
     }
-
-    // Add size considerations
     const sizeMap = {
       tiny: 'tiny detailed design, coin-sized',
       small: 'small intricate design, palm-sized',
@@ -168,31 +135,22 @@ export default function Generate() {
       'extra-large': 'extra large detailed design, major tattoo piece'
     }
     enhancedPrompt += `, ${sizeMap[size]}`
-
-    // Add consistent background and style elements
     enhancedPrompt += ', black and white tattoo design, clean white background, high contrast, professional tattoo art, stencil ready'
-
-    // Add uniqueness seed
     enhancedPrompt += `, unique design ${randomSeed}`
-
     return enhancedPrompt
   }
 
-  // Main Generate button logic
   const handleGenerate = async () => {
     if (!prompt.trim()) {
       setError('Please describe your tattoo idea')
       promptInputRef.current?.focus()
       return
     }
-
     setIsGenerating(true)
     setError('')
     setGeneratedDesigns([])
-
     try {
       const uniquePrompt = generateUniquePrompt()
-
       const response = await fetch('/api/generate-tattoo', {
         method: 'POST',
         headers: {
@@ -206,14 +164,8 @@ export default function Generate() {
           size
         })
       })
-
       const data = await response.json()
-
-      if (!data.success) {
-        throw new Error(data.message || 'Generation failed')
-      }
-
-      // Create design object with the generated image
+      if (!data.success) throw new Error(data.message || 'Generation failed')
       const newDesign = {
         id: Date.now(),
         prompt: prompt,
@@ -225,7 +177,6 @@ export default function Generate() {
         liked: false,
         metadata: data.metadata
       }
-
       setGeneratedDesigns([newDesign])
     } catch (err) {
       console.error('Generation error:', err)
@@ -235,24 +186,17 @@ export default function Generate() {
     }
   }
 
-  // Generate more variations
   const regenerateWithVariations = async () => {
     if (!prompt.trim()) return
-
     setIsGenerating(true)
     setError('')
-
     try {
-      // Generate 3 more variations
       const variations = []
       for (let i = 0; i < 3; i++) {
         const uniquePrompt = generateUniquePrompt()
-
         const response = await fetch('/api/generate-tattoo', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             prompt: uniquePrompt,
             style: primaryStyle,
@@ -261,9 +205,7 @@ export default function Generate() {
             size
           })
         })
-
         const data = await response.json()
-
         if (data.success) {
           variations.push({
             id: Date.now() + i,
@@ -278,7 +220,6 @@ export default function Generate() {
           })
         }
       }
-
       setGeneratedDesigns(prev => [...prev, ...variations])
     } catch (err) {
       console.error('Variation generation error:', err)
@@ -288,12 +229,10 @@ export default function Generate() {
     }
   }
 
-  // Favorite toggle
   const toggleFavorite = (designId) => {
-    setGeneratedDesigns(designs =>
+    setGeneratedDesigns(designs => 
       designs.map(d => d.id === designId ? { ...d, liked: !d.liked } : d)
     )
-
     if (favorites.includes(designId)) {
       setFavorites(favs => favs.filter(id => id !== designId))
     } else {
@@ -301,7 +240,6 @@ export default function Generate() {
     }
   }
 
-  // Download image utility
   const downloadImage = async (imageUrl, design) => {
     try {
       const response = await fetch(imageUrl)
@@ -318,20 +256,26 @@ export default function Generate() {
     }
   }
 
+  const handleShareClick = (design) => {
+    setSelectedDesign(design)
+    setShowSocialSharing(true)
+  }
+  const handleARClick = (design) => {
+    setSelectedDesign(design)
+    setShowAR(true)
+  }
+
   return (
     <>
       <Head>
         <title>Generate Your Tattoo Design - TattooDesignsAI</title>
         <meta name="description" content="Create unique tattoo designs with AI. Describe your idea and get instant, personalized tattoo artwork with 20+ styles and advanced options." />
       </Head>
-
       <SEO 
         title="Generate Your Tattoo Design"
         description="Create custom tattoo designs with AI. Choose from 20+ styles including minimalist, traditional, geometric, and more. Free to try!"
         keywords="tattoo generator, AI tattoo design, custom tattoo, tattoo creator online"
       />
-
-      {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
@@ -382,6 +326,7 @@ export default function Generate() {
                 className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8"
               >
                 <div className="space-y-6">
+                  {/* Prompt Input */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-3">
                       Describe your dream tattoo
@@ -420,7 +365,6 @@ export default function Generate() {
                       <span className="text-xs text-gray-400">{prompt.length}/500</span>
                     </div>
                   </div>
-
                   {/* Quick Style Selection */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -442,7 +386,6 @@ export default function Generate() {
                       ))}
                     </div>
                   </div>
-
                   {/* Advanced Options Toggle */}
                   <div className="flex items-center justify-between">
                     <button
@@ -454,8 +397,6 @@ export default function Generate() {
                       <ChevronRight className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`} />
                     </button>
                   </div>
-
-                  {/* Advanced Options */}
                   <AnimatePresence>
                     {showAdvanced && (
                       <motion.div
@@ -486,7 +427,6 @@ export default function Generate() {
                             ))}
                           </div>
                         </div>
-
                         {/* Secondary Style */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -505,7 +445,6 @@ export default function Generate() {
                             ))}
                           </select>
                         </div>
-
                         {/* Advanced Controls Grid */}
                         <div className="grid md:grid-cols-3 gap-4">
                           <div>
@@ -524,7 +463,6 @@ export default function Generate() {
                               ))}
                             </select>
                           </div>
-
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               Placement
@@ -541,7 +479,6 @@ export default function Generate() {
                               ))}
                             </select>
                           </div>
-
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               Size Guide
@@ -562,8 +499,6 @@ export default function Generate() {
                       </motion.div>
                     )}
                   </AnimatePresence>
-
-                  {/* Generate Button */}
                   <button
                     onClick={handleGenerate}
                     disabled={isGenerating || !prompt.trim()}
@@ -585,8 +520,6 @@ export default function Generate() {
                       </>
                     )}
                   </button>
-
-                  {/* Error Display */}
                   {error && (
                     <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg text-sm">
                       {error}
@@ -595,14 +528,12 @@ export default function Generate() {
                 </div>
               </motion.div>
             </div>
-
             {/* Results Section */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-24">
                 <h3 className="text-lg font-medium mb-4">
                   Your Design{generatedDesigns.length > 1 ? 's' : ''}
                 </h3>
-
                 {generatedDesigns.length > 0 ? (
                   <div className="space-y-6">
                     {generatedDesigns.map((design, index) => (
@@ -615,7 +546,6 @@ export default function Generate() {
                             className="w-full h-auto rounded-lg"
                           />
                         </div>
-
                         <div className="grid grid-cols-2 gap-2">
                           <button
                             onClick={() => downloadImage(design.url, design)}
@@ -624,7 +554,6 @@ export default function Generate() {
                             <Download className="w-4 h-4" />
                             Download
                           </button>
-
                           <button
                             onClick={() => handleShareClick(design)}
                             className="py-2 px-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm flex items-center justify-center gap-2"
@@ -632,7 +561,6 @@ export default function Generate() {
                             <Share2 className="w-4 h-4" />
                             Share
                           </button>
-
                           <button
                             onClick={() => handleARClick(design)}
                             className="py-2 px-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium text-sm flex items-center justify-center gap-2"
@@ -640,7 +568,6 @@ export default function Generate() {
                             <Eye className="w-4 h-4" />
                             AR Preview
                           </button>
-
                           <button
                             onClick={() => toggleFavorite(design.id)}
                             className={`py-2 px-3 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2 ${
@@ -651,7 +578,6 @@ export default function Generate() {
                             {design.liked ? 'Liked' : 'Like'}
                           </button>
                         </div>
-
                         <div className="text-xs text-gray-500 space-y-1 bg-gray-50 rounded-lg p-3">
                           <p><strong>Style:</strong> {design.style}</p>
                           <p><strong>Complexity:</strong> {design.complexity}</p>
@@ -660,7 +586,6 @@ export default function Generate() {
                         </div>
                       </div>
                     ))}
-
                     <div className="flex space-x-3">
                       <button
                         onClick={regenerateWithVariations}
@@ -686,8 +611,7 @@ export default function Generate() {
               </div>
             </div>
           </div>
-
-          {/* Design Detail Modal */}
+          {/* Detail Modal */}
           <AnimatePresence>
             {selectedDesign && !showAR && !showSocialSharing && (
               <motion.div
@@ -702,7 +626,7 @@ export default function Generate() {
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.9, opacity: 0 }}
                   className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={e => e.stopPropagation()}
                 >
                   <div className="flex flex-col md:flex-row h-full">
                     <div className="md:w-3/5 bg-gray-100 relative">
@@ -720,12 +644,10 @@ export default function Generate() {
                         />
                       </div>
                     </div>
-
                     <div className="md:w-2/5 p-8 flex flex-col">
                       <div className="flex-1">
                         <h3 className="text-2xl font-semibold mb-2">{selectedDesign.prompt}</h3>
                         <p className="text-gray-600 mb-4">{selectedDesign.style} Style</p>
-
                         <div className="space-y-3 mb-6">
                           <button
                             onClick={() => handleARClick(selectedDesign)}
@@ -734,7 +656,6 @@ export default function Generate() {
                             <Eye className="w-5 h-5" />
                             Try On with AR
                           </button>
-
                           <div className="grid grid-cols-2 gap-3">
                             <button 
                               onClick={() => downloadImage(selectedDesign.url, selectedDesign)}
@@ -752,7 +673,6 @@ export default function Generate() {
                             </button>
                           </div>
                         </div>
-
                         <div className="text-sm text-gray-600 space-y-2 bg-gray-50 rounded-lg p-4">
                           <p><strong>Style:</strong> {selectedDesign.style}</p>
                           <p><strong>Complexity:</strong> {selectedDesign.complexity}</p>
@@ -767,22 +687,20 @@ export default function Generate() {
               </motion.div>
             )}
           </AnimatePresence>
-
-          {/* Social Sharing Modal */}
+          {/* Fixed Social Sharing Modal */}
           <AnimatePresence>
             {showSocialSharing && selectedDesign && (
-              <SocialSharing
+              <RealSocialSharing
                 imageUrl={selectedDesign.url}
                 design={selectedDesign}
                 onClose={() => setShowSocialSharing(false)}
               />
             )}
           </AnimatePresence>
-
-          {/* Enhanced AR Preview Modal */}
+          {/* Fixed AR Preview Modal */}
           <AnimatePresence>
             {showAR && selectedDesign && (
-              <EnhancedARPreview
+              <RealisticARPreview
                 imageUrl={selectedDesign.url}
                 design={selectedDesign}
                 onClose={() => setShowAR(false)}
