@@ -1,11 +1,10 @@
-// components/RealisticARPreview.js
 import { useState, useRef, useEffect } from 'react'
-import { Camera, Download, RotateCcw, X, Move, ZoomIn, ZoomOut } from 'lucide-react'
+import { Camera, Download, RotateCcw, X, Move, ZoomIn, ZoomOut, SwitchCamera, Sliders } from 'lucide-react'
 
 export default function RealisticARPreview({ imageUrl, design, onClose }) {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
-  const overlayCanvasRef = useRef(null)
+  const renderCanvasRef = useRef(null)
   const streamRef = useRef(null)
   const animationRef = useRef(null)
   
@@ -13,9 +12,15 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
   const [error, setError] = useState(null)
   const [tattooSize, setTattooSize] = useState(80)
   const [tattooPosition, setTattooPosition] = useState({ x: 50, y: 50 })
+  const [tattooRotation, setTattooRotation] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [showControls, setShowControls] = useState(true)
   const [tattooImage, setTattooImage] = useState(null)
+  const [facingMode, setFacingMode] = useState('user')
+  const [skinTone, setSkinTone] = useState({ r: 0, g: 0, b: 0 })
+  const [opacity, setOpacity] = useState(85)
+  const [blur, setBlur] = useState(0.5)
+  const [showAdvancedControls, setShowAdvancedControls] = useState(false)
 
   useEffect(() => {
     startCamera()
@@ -31,13 +36,13 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
         cancelAnimationFrame(animationRef.current)
       }
     }
-  }, [])
+  }, [facingMode])
 
   useEffect(() => {
     if (videoRef.current && tattooImage) {
       startRendering()
     }
-  }, [tattooImage, tattooSize, tattooPosition])
+  }, [tattooImage, tattooSize, tattooPosition, tattooRotation, opacity, blur, skinTone])
 
   const loadTattooImage = () => {
     const img = new Image()
@@ -54,7 +59,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
         video: {
           width: { ideal: 1920 },
           height: { ideal: 1080 },
-          facingMode: 'user'
+          facingMode: facingMode
         }
       })
       
@@ -64,6 +69,8 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
         videoRef.current.onloadedmetadata = () => {
           setIsLoading(false)
           setupCanvas()
+          // Auto-detect skin tone after camera loads
+          setTimeout(() => detectSkinTone(), 500)
         }
       }
     } catch (err) {
@@ -78,70 +85,145 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     }
   }
 
+  const switchCamera = () => {
+    stopCamera()
+    setFacingMode(prevMode => prevMode === 'user' ? 'environment' : 'user')
+  }
+
   const setupCanvas = () => {
-    if (!canvasRef.current || !videoRef.current) return
+    if (!canvasRef.current || !renderCanvasRef.current || !videoRef.current) return
     
     const canvas = canvasRef.current
+    const renderCanvas = renderCanvasRef.current
     const video = videoRef.current
     
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
-    canvas.style.width = '100%'
-    canvas.style.height = '100%'
+    renderCanvas.width = video.videoWidth
+    renderCanvas.height = video.videoHeight
+  }
+
+  const detectSkinTone = () => {
+    if (!videoRef.current || !canvasRef.current) return
+    
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    
+    // Draw current frame
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    
+    // Sample from multiple points to get average skin tone
+    const samplePoints = [
+      { x: canvas.width * 0.5, y: canvas.height * 0.3 },
+      { x: canvas.width * 0.4, y: canvas.height * 0.4 },
+      { x: canvas.width * 0.6, y: canvas.height * 0.4 }
+    ]
+    
+    let totalR = 0, totalG = 0, totalB = 0, validSamples = 0
+    
+    samplePoints.forEach(point => {
+      const imageData = ctx.getImageData(
+        point.x - 10, 
+        point.y - 10, 
+        20, 
+        20
+      )
+      
+      for (let i = 0; i < imageData.data.length; i += 4) {
+        const r = imageData.data[i]
+        const g = imageData.data[i + 1]
+        const b = imageData.data[i + 2]
+        
+        // Check if it's likely skin tone (basic heuristic)
+        if (r > 95 && g > 40 && b > 20 && r > g && r > b) {
+          totalR += r
+          totalG += g
+          totalB += b
+          validSamples++
+        }
+      }
+    })
+    
+    if (validSamples > 0) {
+      setSkinTone({
+        r: Math.round(totalR / validSamples),
+        g: Math.round(totalG / validSamples),
+        b: Math.round(totalB / validSamples)
+      })
+    }
   }
 
   const startRendering = () => {
-    if (!canvasRef.current || !videoRef.current || !tattooImage) return
+    if (!canvasRef.current || !renderCanvasRef.current || !videoRef.current || !tattooImage) return
     
-    const canvas = canvasRef.current
+    const canvas = renderCanvasRef.current
     const ctx = canvas.getContext('2d')
     const video = videoRef.current
     
     const render = () => {
       if (!canvas || !ctx || !video || !tattooImage) return
       
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      
       // Draw video frame
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
       
-      // Calculate tattoo position and size
+      // Calculate tattoo dimensions
       const scale = tattooSize / 100
-      const baseSize = Math.min(canvas.width, canvas.height) * 0.15 // Base size relative to canvas
+      const baseSize = Math.min(canvas.width, canvas.height) * 0.15
       const tattooWidth = baseSize * scale
       const tattooHeight = (tattooWidth * tattooImage.height) / tattooImage.width
       
       const x = (canvas.width * tattooPosition.x / 100) - tattooWidth / 2
       const y = (canvas.height * tattooPosition.y / 100) - tattooHeight / 2
       
-      // Save context for transformations
+      // Save context
       ctx.save()
       
-      // Apply realistic skin blending
-      ctx.globalCompositeOperation = 'multiply'
-      ctx.globalAlpha = 0.8
+      // Create off-screen canvas for tattoo processing
+      const offCanvas = document.createElement('canvas')
+      const offCtx = offCanvas.getContext('2d')
+      offCanvas.width = tattooWidth
+      offCanvas.height = tattooHeight
       
-      // Create gradient for depth effect
-      const gradient = ctx.createRadialGradient(
-        x + tattooWidth/2, y + tattooHeight/2, 0,
-        x + tattooWidth/2, y + tattooHeight/2, tattooWidth/2
-      )
-      gradient.addColorStop(0, 'rgba(0,0,0,0.1)')
-      gradient.addColorStop(1, 'rgba(0,0,0,0.3)')
+      // Draw tattoo to off-screen canvas
+      offCtx.drawImage(tattooImage, 0, 0, tattooWidth, tattooHeight)
+      
+      // Apply skin tone tinting
+      offCtx.globalCompositeOperation = 'source-atop'
+      offCtx.fillStyle = `rgba(${skinTone.r}, ${skinTone.g}, ${skinTone.b}, 0.15)`
+      offCtx.fillRect(0, 0, tattooWidth, tattooHeight)
+      
+      // Reset composite operation
+      offCtx.globalCompositeOperation = 'source-over'
+      
+      // Position and rotate
+      ctx.translate(x + tattooWidth/2, y + tattooHeight/2)
+      ctx.rotate(tattooRotation * Math.PI / 180)
+      
+      // Apply slight blur for realism
+      ctx.filter = `blur(${blur}px)`
       
       // Draw shadow for depth
-      ctx.fillStyle = gradient
-      ctx.fillRect(x + 2, y + 2, tattooWidth, tattooHeight)
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.4)'
+      ctx.shadowBlur = 8
+      ctx.shadowOffsetX = 3
+      ctx.shadowOffsetY = 3
       
-      // Draw the tattoo with skin tone blending
+      // Draw with multiply blend for skin integration
       ctx.globalCompositeOperation = 'multiply'
-      ctx.globalAlpha = 0.85
-      ctx.drawImage(tattooImage, x, y, tattooWidth, tattooHeight)
+      ctx.globalAlpha = opacity / 100
+      ctx.drawImage(offCanvas, -tattooWidth/2, -tattooHeight/2)
       
-      // Add highlight for realism
+      // Add subtle highlight
       ctx.globalCompositeOperation = 'screen'
-      ctx.globalAlpha = 0.1
+      ctx.globalAlpha = 0.05
       ctx.fillStyle = '#ffffff'
-      ctx.fillRect(x, y, tattooWidth * 0.3, tattooHeight * 0.3)
+      ctx.fillRect(-tattooWidth/2, -tattooHeight/2, tattooWidth * 0.3, tattooHeight * 0.3)
       
+      // Restore context
       ctx.restore()
       
       animationRef.current = requestAnimationFrame(render)
@@ -150,30 +232,52 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     render()
   }
 
+  const captureARPhoto = () => {
+    if (!renderCanvasRef.current) return
+    
+    const canvas = renderCanvasRef.current
+    
+    // Convert to blob and download
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `ar-tattoo-${design.style}-${Date.now()}.jpg`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+      }
+    }, 'image/jpeg', 0.95)
+  }
+
+  const handleMouseDown = (e) => {
+    setIsDragging(true)
+    setShowControls(true)
+    handleMove(e)
+  }
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return
+    handleMove(e)
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
   const handleTouchStart = (e) => {
     e.preventDefault()
     setIsDragging(true)
     setShowControls(true)
-    
-    // Reset controls hide timer
-    setTimeout(() => setShowControls(false), 3000)
+    handleMove(e.touches[0])
   }
 
   const handleTouchMove = (e) => {
-    if (!isDragging || !canvasRef.current) return
     e.preventDefault()
-    
-    const canvas = canvasRef.current
-    const rect = canvas.getBoundingClientRect()
-    const touch = e.touches[0]
-    
-    const x = ((touch.clientX - rect.left) / rect.width) * 100
-    const y = ((touch.clientY - rect.top) / rect.height) * 100
-    
-    setTattooPosition({ 
-      x: Math.max(10, Math.min(90, x)), 
-      y: Math.max(10, Math.min(90, y)) 
-    })
+    if (!isDragging) return
+    handleMove(e.touches[0])
   }
 
   const handleTouchEnd = (e) => {
@@ -181,25 +285,27 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     setIsDragging(false)
   }
 
-  const captureARPhoto = async () => {
-    if (!canvasRef.current) return
+  const handleMove = (e) => {
+    if (!renderCanvasRef.current) return
     
-    const canvas = canvasRef.current
+    const canvas = renderCanvasRef.current
+    const rect = canvas.getBoundingClientRect()
     
-    // Create high-quality capture
-    canvas.toBlob((blob) => {
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `ar-tattoo-preview-${Date.now()}.jpg`
-      link.click()
-      URL.revokeObjectURL(url)
-    }, 'image/jpeg', 0.95)
+    const x = ((e.clientX - rect.left) / rect.width) * 100
+    const y = ((e.clientY - rect.top) / rect.height) * 100
+    
+    setTattooPosition({ 
+      x: Math.max(10, Math.min(90, x)), 
+      y: Math.max(10, Math.min(90, y)) 
+    })
   }
 
   const resetPosition = () => {
     setTattooPosition({ x: 50, y: 50 })
     setTattooSize(80)
+    setTattooRotation(0)
+    setOpacity(85)
+    setBlur(0.5)
   }
 
   if (error) {
@@ -224,7 +330,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     <div className="fixed inset-0 bg-black z-50 overflow-hidden">
       {/* Loading Screen */}
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black">
+        <div className="absolute inset-0 flex items-center justify-center bg-black z-10">
           <div className="text-white text-center">
             <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <p>Starting camera...</p>
@@ -241,31 +347,119 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
         className="hidden"
       />
 
-      {/* Main Canvas - Full Screen */}
+      {/* Hidden Processing Canvas */}
+      <canvas ref={canvasRef} className="hidden" />
+
+      {/* Main Render Canvas - Full Screen */}
       <canvas
-        ref={canvasRef}
-        className="absolute inset-0 w-full h-full object-cover touch-none"
+        ref={renderCanvasRef}
+        className="absolute inset-0 w-full h-full object-cover touch-none cursor-move"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onClick={() => setShowControls(!showControls)}
+        onClick={() => !isDragging && setShowControls(!showControls)}
       />
 
       {/* Header Controls */}
-      <div className={`absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 to-transparent p-4 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent p-4 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
         <div className="flex items-center justify-between">
           <h3 className="text-white font-semibold text-lg">AR Tattoo Preview</h3>
-          <button
-            onClick={onClose}
-            className="p-2 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={switchCamera}
+              className="p-2 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors"
+              title="Switch camera"
+            >
+              <SwitchCamera className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setShowAdvancedControls(!showAdvancedControls)}
+              className="p-2 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors"
+            >
+              <Sliders className="w-5 h-5" />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Advanced Controls Panel */}
+      {showAdvancedControls && showControls && (
+        <div className="absolute top-16 right-4 bg-black/80 backdrop-blur-lg rounded-lg p-4 text-white min-w-[240px]">
+          <h4 className="font-semibold mb-3">Advanced Settings</h4>
+          
+          <div className="space-y-4">
+            {/* Opacity Control */}
+            <div>
+              <label className="text-sm mb-1 block">Opacity: {opacity}%</label>
+              <input
+                type="range"
+                min="40"
+                max="100"
+                value={opacity}
+                onChange={(e) => setOpacity(parseInt(e.target.value))}
+                className="w-full h-2 bg-white/20 rounded-lg appearance-none slider"
+              />
+            </div>
+
+            {/* Blur Control */}
+            <div>
+              <label className="text-sm mb-1 block">Edge Blur: {blur}px</label>
+              <input
+                type="range"
+                min="0"
+                max="2"
+                step="0.1"
+                value={blur}
+                onChange={(e) => setBlur(parseFloat(e.target.value))}
+                className="w-full h-2 bg-white/20 rounded-lg appearance-none slider"
+              />
+            </div>
+
+            {/* Rotation Control */}
+            <div>
+              <label className="text-sm mb-1 block">Rotation: {tattooRotation}°</label>
+              <input
+                type="range"
+                min="-180"
+                max="180"
+                value={tattooRotation}
+                onChange={(e) => setTattooRotation(parseInt(e.target.value))}
+                className="w-full h-2 bg-white/20 rounded-lg appearance-none slider"
+              />
+            </div>
+
+            {/* Skin Tone Display */}
+            <div>
+              <label className="text-sm mb-1 block">Detected Skin Tone</label>
+              <div className="flex items-center gap-2">
+                <div 
+                  className="w-8 h-8 rounded border border-white/50"
+                  style={{ backgroundColor: `rgb(${skinTone.r}, ${skinTone.g}, ${skinTone.b})` }}
+                />
+                <button
+                  onClick={detectSkinTone}
+                  className="text-xs bg-blue-500/20 hover:bg-blue-500/30 px-2 py-1 rounded"
+                >
+                  Re-detect
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mobile-Optimized Bottom Controls */}
-      <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
         {/* Size Control */}
         <div className="px-6 py-4">
           <div className="flex items-center gap-4 mb-4">
@@ -310,7 +504,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
           <div className="bg-black/50 backdrop-blur-sm text-white px-4 py-2 rounded-lg text-sm">
             <Move className="w-4 h-4 inline mr-2" />
-            Touch and drag to move tattoo
+            Drag to move tattoo
           </div>
         </div>
       )}
