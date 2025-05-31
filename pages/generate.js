@@ -1,3 +1,4 @@
+// pages/generate.js
 import { useState, useRef } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
@@ -8,6 +9,9 @@ import {
   Palette, Zap, Eye, Settings, Info
 } from 'lucide-react'
 import SEO from '../components/SEO'
+import SocialSharing from '../components/SocialSharing'
+import EnhancedARPreview from '../components/EnhancedARPreview'
+
 export default function Generate() {
   const [prompt, setPrompt] = useState('')
   const [primaryStyle, setPrimaryStyle] = useState('traditional')
@@ -19,14 +23,14 @@ export default function Generate() {
   const [generatedDesigns, setGeneratedDesigns] = useState([])
   const [selectedDesign, setSelectedDesign] = useState(null)
   const [showAR, setShowAR] = useState(false)
+  const [showSocialSharing, setShowSocialSharing] = useState(false)
   const [favorites, setFavorites] = useState([])
   const [error, setError] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
-  
   const promptInputRef = useRef(null)
   const videoRef = useRef(null)
 
-  // 20+ Artistic Styles
+  // Artistic Styles
   const tattooStyles = [
     { value: 'traditional', label: 'Traditional', description: 'Bold lines, bright colors, classic Americana' },
     { value: 'neo-traditional', label: 'Neo-Traditional', description: 'Modern twist on traditional with more detail' },
@@ -104,20 +108,30 @@ export default function Generate() {
     'Delicate constellation map with star connections'
   ]
 
+  // New: Social Sharing modal & Enhanced AR modal handlers
+  const handleShareClick = (design) => {
+    setSelectedDesign(design)
+    setShowSocialSharing(true)
+  }
+  const handleARClick = (design) => {
+    setSelectedDesign(design)
+    setShowAR(true)
+  }
+
+  // Generate prompt with style/size/complexity context
   const generateUniquePrompt = () => {
     const timestamp = Date.now()
     const randomSeed = Math.random().toString(36).substring(7)
-    
     let enhancedPrompt = prompt
-    
+
     // Add primary style
     enhancedPrompt += `, ${primaryStyle} tattoo style`
-    
+
     // Add secondary style if selected
     if (secondaryStyle !== 'none') {
       enhancedPrompt += ` with ${secondaryStyle} influences`
     }
-    
+
     // Add complexity
     const complexityMap = {
       simple: 'clean and simple',
@@ -126,7 +140,7 @@ export default function Generate() {
       masterpiece: 'intricate masterpiece quality'
     }
     enhancedPrompt += `, ${complexityMap[complexity]}`
-    
+
     // Add placement considerations
     if (placement !== 'generic') {
       const placementMap = {
@@ -144,7 +158,7 @@ export default function Generate() {
       }
       enhancedPrompt += `, ${placementMap[placement]}`
     }
-    
+
     // Add size considerations
     const sizeMap = {
       tiny: 'tiny detailed design, coin-sized',
@@ -154,16 +168,17 @@ export default function Generate() {
       'extra-large': 'extra large detailed design, major tattoo piece'
     }
     enhancedPrompt += `, ${sizeMap[size]}`
-    
+
     // Add consistent background and style elements
     enhancedPrompt += ', black and white tattoo design, clean white background, high contrast, professional tattoo art, stencil ready'
-    
+
     // Add uniqueness seed
     enhancedPrompt += `, unique design ${randomSeed}`
-    
+
     return enhancedPrompt
   }
 
+  // Main Generate button logic
   const handleGenerate = async () => {
     if (!prompt.trim()) {
       setError('Please describe your tattoo idea')
@@ -174,10 +189,10 @@ export default function Generate() {
     setIsGenerating(true)
     setError('')
     setGeneratedDesigns([])
-    
+
     try {
       const uniquePrompt = generateUniquePrompt()
-      
+
       const response = await fetch('/api/generate-tattoo', {
         method: 'POST',
         headers: {
@@ -210,9 +225,8 @@ export default function Generate() {
         liked: false,
         metadata: data.metadata
       }
-      
+
       setGeneratedDesigns([newDesign])
-      
     } catch (err) {
       console.error('Generation error:', err)
       setError(err.message || 'Failed to generate tattoo. Please try again.')
@@ -221,19 +235,19 @@ export default function Generate() {
     }
   }
 
+  // Generate more variations
   const regenerateWithVariations = async () => {
     if (!prompt.trim()) return
-    
+
     setIsGenerating(true)
     setError('')
-    
+
     try {
       // Generate 3 more variations
       const variations = []
-      
       for (let i = 0; i < 3; i++) {
         const uniquePrompt = generateUniquePrompt()
-        
+
         const response = await fetch('/api/generate-tattoo', {
           method: 'POST',
           headers: {
@@ -264,9 +278,8 @@ export default function Generate() {
           })
         }
       }
-      
+
       setGeneratedDesigns(prev => [...prev, ...variations])
-      
     } catch (err) {
       console.error('Variation generation error:', err)
       setError('Failed to generate variations. Please try again.')
@@ -275,11 +288,12 @@ export default function Generate() {
     }
   }
 
+  // Favorite toggle
   const toggleFavorite = (designId) => {
-    setGeneratedDesigns(designs => 
+    setGeneratedDesigns(designs =>
       designs.map(d => d.id === designId ? { ...d, liked: !d.liked } : d)
     )
-    
+
     if (favorites.includes(designId)) {
       setFavorites(favs => favs.filter(id => id !== designId))
     } else {
@@ -287,6 +301,7 @@ export default function Generate() {
     }
   }
 
+  // Download image utility
   const downloadImage = async (imageUrl, design) => {
     try {
       const response = await fetch(imageUrl)
@@ -301,26 +316,6 @@ export default function Generate() {
       console.error('Download failed:', error)
       setError('Failed to download image')
     }
-  }
-
-  const startARPreview = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        setShowAR(true)
-      }
-    } catch (error) {
-      setError('Camera access needed for AR preview. Please allow camera permissions.')
-    }
-  }
-
-  const stopARPreview = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const tracks = videoRef.current.srcObject.getTracks()
-      tracks.forEach(track => track.stop())
-    }
-    setShowAR(false)
   }
 
   return (
@@ -380,7 +375,6 @@ export default function Generate() {
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Controls Section */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Main Prompt Input */}
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -608,7 +602,7 @@ export default function Generate() {
                 <h3 className="text-lg font-medium mb-4">
                   Your Design{generatedDesigns.length > 1 ? 's' : ''}
                 </h3>
-                
+
                 {generatedDesigns.length > 0 ? (
                   <div className="space-y-6">
                     {generatedDesigns.map((design, index) => (
@@ -621,32 +615,40 @@ export default function Generate() {
                             className="w-full h-auto rounded-lg"
                           />
                         </div>
-                        
-                        <div className="flex flex-col space-y-2">
+
+                        <div className="grid grid-cols-2 gap-2">
                           <button
                             onClick={() => downloadImage(design.url, design)}
-                            className="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                            className="py-2 px-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center justify-center gap-2"
                           >
                             <Download className="w-4 h-4" />
-                            Download HD
+                            Download
                           </button>
-                          
+
                           <button
-                            onClick={startARPreview}
-                            className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                            onClick={() => handleShareClick(design)}
+                            className="py-2 px-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                          >
+                            <Share2 className="w-4 h-4" />
+                            Share
+                          </button>
+
+                          <button
+                            onClick={() => handleARClick(design)}
+                            className="py-2 px-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium text-sm flex items-center justify-center gap-2"
                           >
                             <Eye className="w-4 h-4" />
                             AR Preview
                           </button>
-                          
+
                           <button
                             onClick={() => toggleFavorite(design.id)}
-                            className={`w-full py-3 px-4 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2 ${
+                            className={`py-2 px-3 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2 ${
                               design.liked ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                           >
                             <Heart className={`w-4 h-4 ${design.liked ? 'fill-current' : ''}`} />
-                            {design.liked ? 'Favorited' : 'Add to Favorites'}
+                            {design.liked ? 'Liked' : 'Like'}
                           </button>
                         </div>
 
@@ -658,7 +660,7 @@ export default function Generate() {
                         </div>
                       </div>
                     ))}
-                    
+
                     <div className="flex space-x-3">
                       <button
                         onClick={regenerateWithVariations}
@@ -687,7 +689,7 @@ export default function Generate() {
 
           {/* Design Detail Modal */}
           <AnimatePresence>
-            {selectedDesign && (
+            {selectedDesign && !showAR && !showSocialSharing && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -724,16 +726,16 @@ export default function Generate() {
                         <h3 className="text-2xl font-semibold mb-2">{selectedDesign.prompt}</h3>
                         <p className="text-gray-600 mb-4">{selectedDesign.style} Style</p>
 
-                        <div className="space-y-4 mb-6">
+                        <div className="space-y-3 mb-6">
                           <button
-                            onClick={() => setShowAR(true)}
+                            onClick={() => handleARClick(selectedDesign)}
                             className="w-full py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
                           >
                             <Eye className="w-5 h-5" />
                             Try On with AR
                           </button>
-                          
-                          <div className="grid grid-cols-2 gap-4">
+
+                          <div className="grid grid-cols-2 gap-3">
                             <button 
                               onClick={() => downloadImage(selectedDesign.url, selectedDesign)}
                               className="py-3 border-2 border-gray-200 rounded-lg font-medium hover:border-gray-300 transition-colors flex items-center justify-center gap-2"
@@ -741,7 +743,10 @@ export default function Generate() {
                               <Download className="w-4 h-4" />
                               Download
                             </button>
-                            <button className="py-3 border-2 border-gray-200 rounded-lg font-medium hover:border-gray-300 transition-colors flex items-center justify-center gap-2">
+                            <button 
+                              onClick={() => handleShareClick(selectedDesign)}
+                              className="py-3 border-2 border-gray-200 rounded-lg font-medium hover:border-gray-300 transition-colors flex items-center justify-center gap-2"
+                            >
                               <Share2 className="w-4 h-4" />
                               Share
                             </button>
@@ -763,35 +768,25 @@ export default function Generate() {
             )}
           </AnimatePresence>
 
-          {/* AR Preview Modal */}
+          {/* Social Sharing Modal */}
           <AnimatePresence>
-            {showAR && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black z-50 flex items-center justify-center"
-              >
-                <button
-                  onClick={stopARPreview}
-                  className="absolute top-6 right-6 text-white hover:text-gray-300 transition-colors"
-                >
-                  <ChevronLeft className="w-8 h-8" />
-                </button>
-                
-                <div className="text-center text-white">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="max-w-md mx-auto rounded-lg"
-                  />
-                  <Camera className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                  <h3 className="text-2xl font-semibold mb-2">AR Preview</h3>
-                  <p className="text-gray-300">Position your device to see the tattoo on your skin</p>
-                </div>
-              </motion.div>
+            {showSocialSharing && selectedDesign && (
+              <SocialSharing
+                imageUrl={selectedDesign.url}
+                design={selectedDesign}
+                onClose={() => setShowSocialSharing(false)}
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Enhanced AR Preview Modal */}
+          <AnimatePresence>
+            {showAR && selectedDesign && (
+              <EnhancedARPreview
+                imageUrl={selectedDesign.url}
+                design={selectedDesign}
+                onClose={() => setShowAR(false)}
+              />
             )}
           </AnimatePresence>
         </div>
