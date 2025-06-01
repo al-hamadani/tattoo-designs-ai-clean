@@ -1,4 +1,3 @@
-// components/RealisticARPreview/hooks/useCamera.js
 import { useRef, useCallback } from 'react';
 
 export const useCamera = (videoRef, facingMode) => {
