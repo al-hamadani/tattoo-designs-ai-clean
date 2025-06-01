@@ -3,40 +3,49 @@ import { useRef, useCallback } from 'react';
 import { Pose } from '@mediapipe/pose';
 import { SelfieSegmentation } from '@mediapipe/selfie_segmentation';
 
-/* ---------- CDN helper for Pose assets ---------- */
-const poseLocate = (file) =>
-  `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+// --------- MediaPipe CDN helpers (update to match your installed versions) ---------
+const MP_POSE_VERSION = '0.5.1675469404';
+const MP_SELFIE_SEG_VERSION = '0.1.1675465747';
 
-/* ---------- singleton keep-alives (avoid re-download) ---------- */
+
+const poseLocate = (file) =>
+  `https://cdn.jsdelivr.net/npm/@mediapipe/pose@${MP_POSE_VERSION}/${file}`;
+const segLocate = (file) =>
+  `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@${MP_SELFIE_SEG_VERSION}/${file}`;
+
+
+// --------- Keep singletons to avoid multiple WASM loads ---------
 let poseSingleton = null;
-let segSingleton  = null;
+let segSingleton = null;
 
 export const useMediaPipe = ({ onPoseResults, onSegmentationResults }) => {
   const poseRef = useRef(null);
-  const segRef  = useRef(null);
+  const segRef = useRef(null);
 
-  /* one-time bootstrap */
+  // --------- One-time initialization for both models ---------
   const initModels = useCallback(async () => {
     try {
-      /* Selfie Segmentation (SIMD build from CDN) */
+      // -- SelfieSegmentation --
       if (!segSingleton) {
-        console.log('📦 Loading Selfie Segmentation…');
-        segSingleton = new SelfieSegmentation({ modelSelection: 1 });
-        await segSingleton.initialize();            // pulls wasm + JS
+        console.log('📦 Loading Selfie Segmentation...');
+        segSingleton = new SelfieSegmentation({ locateFile: segLocate });
+        segSingleton.setOptions({ modelSelection: 1 }); // 1 = landscape, 0 = general
+        await segSingleton.initialize();
       }
       segRef.current = segSingleton;
       segRef.current.onResults(onSegmentationResults);
       console.log('✅ Segmentation ready');
 
-      /* Pose Detection */
+      // -- Pose Detection --
       if (!poseSingleton) {
-        console.log('📦 Loading Pose Detection…');
+        console.log('📦 Loading Pose Detection...');
         poseSingleton = new Pose({ locateFile: poseLocate });
         poseSingleton.setOptions({
           modelComplexity: 1,
           smoothLandmarks: true,
+          enableSegmentation: false,
           minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5
+          minTrackingConfidence: 0.5,
         });
         await poseSingleton.initialize();
       }
@@ -49,11 +58,18 @@ export const useMediaPipe = ({ onPoseResults, onSegmentationResults }) => {
     }
   }, [onPoseResults, onSegmentationResults]);
 
-  /* feed a frame through both models */
-  const sendFrame = useCallback(async (video) => {
-    if (segRef.current)  await segRef.current.send({ image: video });
-    if (poseRef.current) await poseRef.current.send({ image: video });
-  }, []);
+  // --------- Send a frame to both models ---------
+  const sendFrame = useCallback(
+    async (video) => {
+      if (segRef.current) {
+        await segRef.current.send({ image: video });
+      }
+      if (poseRef.current) {
+        await poseRef.current.send({ image: video });
+      }
+    },
+    []
+  );
 
   return { poseRef, segRef, initModels, sendFrame };
 };

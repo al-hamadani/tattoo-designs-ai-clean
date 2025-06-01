@@ -55,10 +55,11 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     poseRef, segRef, initModels, sendFrame
   } = useMediaPipe({
     onPoseResults: processResults,
-    onSegmentationResults: () => {}
+    onSegmentationResults: processSegmentation
   });
 
   const processSegmentation = useCallback((results) => {
+    console.log('processSegmentation called', results);
     if (
       !canvasRef.current ||
       !videoRef.current  ||
