@@ -1,543 +1,663 @@
-// components/RealisticARPreview.js - Enhanced with MediaPipe Pose for basic orientation
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { Camera, Download, RotateCcw, X, Move, ZoomIn, ZoomOut, SwitchCamera, Sliders, Loader2, User, Zap } from 'lucide-react'
-import { SelfieSegmentation, Results as SegmentationResults } from '@mediapipe/selfie_segmentation'
-import { Pose, Results as PoseResults, POSE_LANDMARKS } from '@mediapipe/pose'
+import { useState, useRef, useEffect, useCallback } from "react";
+import {
+  Camera,
+  Download,
+  RotateCcw,
+  X,
+  Move,
+  ZoomIn,
+  ZoomOut,
+  SwitchCamera,
+  Sliders,
+  Loader2,
+  User,
+} from "lucide-react";
+import { SelfieSegmentation } from "@mediapipe/selfie_segmentation";
+import { Pose, POSE_LANDMARKS } from "@mediapipe/pose";
+import * as THREE from "three";
 
-// Helper for EMA smoothing
-const smoothValue = (currentValue, previousValue, alpha) => {
-  if (previousValue === null) return currentValue;
-  return previousValue * (1 - alpha) + currentValue * alpha;
+// MediaPipe helper - locates files from public/mediapipe/
+const locateFile = (file) => `/mediapipe/${file}`;
+
+// Persistent shared instances (survive React Strict Mode)
+let globalPoseInstance = null;
+let globalSegmentationInstance = null;
+
+// Smoothing helper
+const vec3Smooth = (current, previous, alpha) => {
+  if (!previous) return current.clone();
+  return previous.clone().lerp(current, alpha);
 };
 
 export default function RealisticARPreview({ imageUrl, design, onClose }) {
+  // Refs
   const videoRef = useRef(null);
-  const canvasRef = useRef(null); // For drawing video and tattoo
-  const offscreenCanvasRef = useRef(null); // For processing tattoo image
-  const streamRef = useRef(null);
-  const animationFrameIdRef = useRef(null);
+  const canvasRef = useRef(null);
+  const threeCanvasRef = useRef(null);
   
-  const selfieSegmentationRef = useRef(null);
+  const streamRef = useRef(null);
+  const frameIdRef = useRef(null);
+  
   const poseRef = useRef(null);
+  const segRef = useRef(null);
+  
+  const sceneRef = useRef(null);
+  const cameraRef = useRef(null);
+  const rendererRef = useRef(null);
+  const meshRef = useRef(null);
+  const textureRef = useRef(null);
 
+  // State
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingMessage, setLoadingMessage] = useState('Initializing AR...');
+  const [loadingMsg, setLoadingMsg] = useState("Initializing AR…");
   const [error, setError] = useState(null);
   
-  // Tattoo visual properties
-  const [tattooSize, setTattooSize] = useState(80); // User-controlled base size percentage
-  const [tattooPosition, setTattooPosition] = useState({ x: 50, y: 50 }); // User-controlled position %
-  const [tattooRotation, setTattooRotation] = useState(0); // User-controlled rotation
+  // Tattoo transform
+  const [scaleFactor, setScaleFactor] = useState(0.15);
+  const [offset, setOffset] = useState({ x: 0, y: 0, z: 0.01 });
+  const [rotationDeg, setRotationDeg] = useState(0);
+  
+  // Rendering
   const [opacity, setOpacity] = useState(0.85);
-  const [blur, setBlur] = useState(0.5);
-  const [blendMode, setBlendMode] = useState('multiply');
-  const [tattooImage, setTattooImage] = useState(null);
-
-  // Interaction states
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [initialTattooPosition, setInitialTattooPosition] = useState({ x: 0, y: 0 });
+  const [blendMode, setBlendMode] = useState("multiply");
+  const [tattooImg, setTattooImg] = useState(null);
+  
+  // UI & interaction
+  const [dragging, setDragging] = useState(false);
+  const [start, setStart] = useState({ x: 0, y: 0 });
+  const [initOffset, setInitOffset] = useState({ x: 0, y: 0 });
   const [showControls, setShowControls] = useState(true);
-  const [showAdvancedControls, setShowAdvancedControls] = useState(false);
-  const [facingMode, setFacingMode] = useState('user');
+  const [showAdv, setShowAdv] = useState(false);
+  const [facing, setFacing] = useState("user");
+  const [enablePose, setEnablePose] = useState(true);
+  
+  const [landmarks, setLandmarks] = useState({ shoulder: null, elbow: null, wrist: null });
+  const ALPHA = 0.4;
 
-  // Pose-derived transformation states
-  const [enablePoseDetection, setEnablePoseDetection] = useState(true); // Toggle for pose effect
-  const [smoothedArmAngle, setSmoothedArmAngle] = useState(null); // Radians
-  const [smoothedArmScale, setSmoothedArmScale] = useState(null); // Multiplier
-  const [detectedArmCenter, setDetectedArmCenter] = useState(null); // {x, y} in normalized video coords
-
-  const POSE_SMOOTHING_ALPHA = 0.4; // For EMA smoothing of pose data
-
-  // --- Initialization and Lifecycle ---
-  const loadTattooImage = useCallback(() => {
-    if (!imageUrl) {
-      setError('Tattoo image URL is missing.');
-      setIsLoading(false);
-      return;
-    }
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => setTattooImage(img);
-    img.onerror = () => {
-      setError('Failed to load tattoo image.');
-      setIsLoading(false);
-    };
-    img.src = imageUrl;
-  }, [imageUrl]);
-
-  const initializeModels = useCallback(() => {
-    setLoadingMessage('Loading AI models...');
-    // Selfie Segmentation
-    try {
-      const segmentation = new SelfieSegmentation({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`,
-      });
-      segmentation.setOptions({ modelSelection: 1 });
-      segmentation.onResults(onSegmentationResults);
-      selfieSegmentationRef.current = segmentation;
-    } catch (e) {
-      console.error("Failed to init Segmentation:", e);
-      setError("Failed to load segmentation model.");
-    }
-
-    // Pose Detection
-    try {
-      const pose = new Pose({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
-      });
-      pose.setOptions({
-        modelComplexity: 1, // 0, 1, 2
-        smoothLandmarks: true,
-        enableSegmentation: false, // We use SelfieSegmentation for masks
-        smoothSegmentation: false,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5,
-      });
-      pose.onResults(onPoseResults);
-      poseRef.current = pose;
-    } catch (e) {
-      console.error("Failed to init Pose:", e);
-      setError("Failed to load pose detection model.");
-    }
-  }, []);
-
-  const startCamera = useCallback(async () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-    }
-    setLoadingMessage('Accessing camera...');
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: facingMode,
-        },
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-        videoRef.current.onloadedmetadata = () => {
-          setupCanvases();
-          setIsLoading(false);
-          setLoadingMessage('Processing video...');
-          if (videoRef.current?.readyState >= 3) { // HAVE_FUTURE_DATA
-             sendVideoFrameToModelsLoop();
-          }
-        };
-         videoRef.current.onplaying = () => {
-            if (videoRef.current?.readyState >= 3) {
-                 sendVideoFrameToModelsLoop();
-            }
-        };
-      }
-    } catch (err) {
-      console.error('Camera access error:', err);
-      setError(`Camera access denied or no camera found. Error: ${err.message}`);
-      setIsLoading(false);
-    }
-  }, [facingMode]);
-
-  useEffect(() => {
-    setIsLoading(true);
-    loadTattooImage();
-    initializeModels();
-    const controlsTimer = setTimeout(() => setShowControls(false), 5000);
-    return () => {
-      clearTimeout(controlsTimer);
-      stopCameraAndProcessing();
-      selfieSegmentationRef.current?.close().catch(console.error);
-      poseRef.current?.close().catch(console.error);
-    };
-  }, [loadTattooImage, initializeModels]);
-
-  useEffect(() => {
-    if (tattooImage && selfieSegmentationRef.current && poseRef.current) {
-      startCamera();
-    }
-  }, [facingMode, startCamera, tattooImage]);
-
-  const stopCameraAndProcessing = () => {
-    if (animationFrameIdRef.current) {
-      cancelAnimationFrame(animationFrameIdRef.current);
-      animationFrameIdRef.current = null;
+  // Stop camera
+  const stopCamera = useCallback(() => {
+    if (frameIdRef.current) {
+      cancelAnimationFrame(frameIdRef.current);
+      frameIdRef.current = null;
     }
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
-    if (videoRef.current && videoRef.current.srcObject) {
+    if (videoRef.current) {
       videoRef.current.srcObject = null;
-    }
-  };
-
-  const switchCamera = () => {
-    stopCameraAndProcessing();
-    setIsLoading(true);
-    setLoadingMessage('Switching camera...');
-    setFacingMode(prev => (prev === 'user' ? 'environment' : 'user'));
-  };
-
-  const setupCanvases = () => {
-    if (!canvasRef.current || !videoRef.current || !videoRef.current.videoWidth) return;
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const offscreenCanvas = offscreenCanvasRef.current || document.createElement('canvas');
-    offscreenCanvasRef.current = offscreenCanvas;
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    // Offscreen canvas will be resized dynamically based on tattoo size
-  };
-
-  // --- MediaPipe Processing ---
-  const sendVideoFrameToModelsLoop = async () => {
-    if (!videoRef.current || !videoRef.current.srcObject || videoRef.current.paused || videoRef.current.ended || videoRef.current.readyState < 3) {
-      if (selfieSegmentationRef.current || poseRef.current) { // Only request if models are active
-        animationFrameIdRef.current = requestAnimationFrame(sendVideoFrameToModelsLoop);
-      }
-      return;
-    }
-    const video = videoRef.current;
-    try {
-      if (selfieSegmentationRef.current?.send && video) {
-        await selfieSegmentationRef.current.send({ image: video });
-      }
-      if (enablePoseDetection && poseRef.current?.send && video) {
-        await poseRef.current.send({ image: video });
-      }
-    } catch (e) {
-      console.error("Error sending frame to MediaPipe:", e);
-    }
-    // The onResults callbacks will handle requesting the next frame IF they are the main driver.
-    // Here, we let segmentation be the driver. Pose just updates its state.
-    // If segmentation isn't driving, this loop needs to ensure it continues.
-    // For simplicity, let segmentation's onResults drive the next animation frame.
-  };
-
-  const onPoseResults = useCallback((results) => {
-    if (!results.poseLandmarks) {
-      setSmoothedArmAngle(null); // Reset if no landmarks
-      setSmoothedArmScale(null);
-      setDetectedArmCenter(null);
-      return;
-    }
-
-    const landmarks = results.poseLandmarks;
-    // Try left arm first, then right arm
-    let p1 = landmarks[POSE_LANDMARKS.LEFT_SHOULDER];
-    let p2 = landmarks[POSE_LANDMARKS.LEFT_ELBOW];
-    let p3 = landmarks[POSE_LANDMARKS.LEFT_WRIST];
-
-    if (!p1 || !p2 || !p3 || p1.visibility < 0.4 || p2.visibility < 0.4 || p3.visibility < 0.4) {
-      p1 = landmarks[POSE_LANDMARKS.RIGHT_SHOULDER];
-      p2 = landmarks[POSE_LANDMARKS.RIGHT_ELBOW];
-      p3 = landmarks[POSE_LANDMARKS.RIGHT_WRIST];
-    }
-
-    if (p1 && p2 && p3 && p1.visibility > 0.4 && p2.visibility > 0.4 && p3.visibility > 0.4) {
-      // Calculate forearm orientation (elbow to wrist)
-      const dxElbowWrist = p3.x - p2.x;
-      const dyElbowWrist = p3.y - p2.y;
-      const currentAngle = Math.atan2(dyElbowWrist, dxElbowWrist);
-
-      // Calculate scale based on forearm length on screen
-      const forearmScreenLength = Math.sqrt(dxElbowWrist**2 + dyElbowWrist**2);
-      // Normalize scale: assume a forearm length of 0.3 (30% of video width/height) is 'normal' scale 1
-      let currentScale = forearmScreenLength / 0.25; // Adjust 0.25 as needed
-      currentScale = Math.max(0.3, Math.min(2.5, currentScale)); // Clamp
-
-      // Center of the forearm (for potential auto-placement, though user controls position)
-      const armCenterX = (p2.x + p3.x) / 2;
-      const armCenterY = (p2.y + p3.y) / 2;
-      
-      setSmoothedArmAngle(prev => smoothValue(currentAngle, prev, POSE_SMOOTHING_ALPHA));
-      setSmoothedArmScale(prev => smoothValue(currentScale, prev, POSE_SMOOTHING_ALPHA));
-      setDetectedArmCenter({ x: armCenterX, y: armCenterY });
-
-    } else {
-      setSmoothedArmAngle(null);
-      setSmoothedArmScale(null);
-      setDetectedArmCenter(null);
     }
   }, []);
 
-  const onSegmentationResults = useCallback((results) => {
-    if (!canvasRef.current || !videoRef.current || !tattooImage || !results.segmentationMask || !offscreenCanvasRef.current) {
-      animationFrameIdRef.current = requestAnimationFrame(sendVideoFrameToModelsLoop); // Keep loop going
+  // Main frame loop
+  const loop = useCallback(async () => {
+    if (!videoRef.current || videoRef.current.readyState < 3) {
+      frameIdRef.current = requestAnimationFrame(loop);
+      return;
+    }
+    
+    try {
+      if (segRef.current) await segRef.current.send({ image: videoRef.current });
+      if (enablePose && poseRef.current) await poseRef.current.send({ image: videoRef.current });
+    } catch (err) {
+      console.error("Error sending frame to MediaPipe:", err);
+      frameIdRef.current = requestAnimationFrame(loop);
+    }
+  }, [enablePose]);
+
+  // Pose callback
+  const onPose = useCallback((res) => {
+    if (!res.poseLandmarks) {
+      setLandmarks({ shoulder: null, elbow: null, wrist: null });
+      return;
+    }
+
+    const lms = res.poseLandmarks;
+    const next = { ...landmarks };
+
+    const smooth = (key, idx) => {
+      const p = lms[idx];
+      if (p && p.visibility > 0.5) {
+        const v = new THREE.Vector3(p.x, 1 - p.y, p.z);
+        return vec3Smooth(v, next[key], ALPHA);
+      }
+      return null;
+    };
+
+    let s = POSE_LANDMARKS.LEFT_SHOULDER,
+        e = POSE_LANDMARKS.LEFT_ELBOW,
+        w = POSE_LANDMARKS.LEFT_WRIST;
+        
+    if (!lms[s] || lms[s].visibility < 0.4) {
+      s = POSE_LANDMARKS.RIGHT_SHOULDER;
+      e = POSE_LANDMARKS.RIGHT_ELBOW;
+      w = POSE_LANDMARKS.RIGHT_WRIST;
+    }
+
+    next.shoulder = smooth("shoulder", s);
+    next.elbow = smooth("elbow", e);
+    next.wrist = smooth("wrist", w);
+    setLandmarks(next);
+  }, [landmarks]);
+
+  // Segmentation callback
+  const onSeg = useCallback((res) => {
+    if (!canvasRef.current || !videoRef.current || !tattooImg || 
+        !meshRef.current || !rendererRef.current || !res.segmentationMask) {
+      frameIdRef.current = requestAnimationFrame(loop);
       return;
     }
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    const video = videoRef.current;
-    const segmentationMask = results.segmentationMask;
-    const offCanvas = offscreenCanvasRef.current;
-    const offCtx = offCanvas.getContext('2d');
+    const { width, height } = canvas;
 
-    if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-      setupCanvases();
-    }
-    
-    // --- Tattoo Base Sizing ---
-    const canvasMinDim = Math.min(canvas.width, canvas.height);
-    // Base size of tattoo relative to canvasMinDim, then scaled by user's tattooSize %
-    const baseTattooDim = canvasMinDim * 0.25 * (tattooSize / 100); 
-
-    // Apply pose-based scale if available and enabled
-    const finalScaleMultiplier = (enablePoseDetection && smoothedArmScale !== null) ? smoothedArmScale : 1;
-    const actualTattooWidth = baseTattooDim * finalScaleMultiplier;
-    const actualTattooHeight = (actualTattooWidth * tattooImage.height) / tattooImage.width;
-
-    // --- Tattoo Positioning ---
-    // User controls position relative to canvas center or detected arm center
-    let anchorX = canvas.width * tattooPosition.x / 100;
-    let anchorY = canvas.height * tattooPosition.y / 100;
-
-    if (enablePoseDetection && detectedArmCenter) {
-        // Option: Make user position relative to detected arm center
-        // For now, let user position be absolute, but tattoo orients with arm
-    }
-
-    const posX = anchorX - actualTattooWidth / 2;
-    const posY = anchorY - actualTattooHeight / 2;
-    
-    // --- Drawing ---
+    // Draw base video frame
     ctx.save();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(videoRef.current, 0, 0, width, height);
 
-    // Prepare tattoo on offscreen canvas
-    offCanvas.width = actualTattooWidth;
-    offCanvas.height = actualTattooHeight;
-    offCtx.clearRect(0, 0, offCanvas.width, offCanvas.height);
+    // Update & render tattoo mesh
+    if (enablePose && landmarks.elbow && landmarks.wrist) {
+      const sx = width, sy = height;
+      const elbow = new THREE.Vector3(
+        landmarks.elbow.x * sx - width / 2,
+        landmarks.elbow.y * sy - height / 2,
+        0
+      );
+      const wrist = new THREE.Vector3(
+        landmarks.wrist.x * sx - width / 2,
+        landmarks.wrist.y * sy - height / 2,
+        0
+      );
+      const mid = elbow.clone().add(wrist).multiplyScalar(0.5);
+      const dir = wrist.clone().sub(elbow);
 
-    offCtx.translate(actualTattooWidth / 2, actualTattooHeight / 2); // Translate to center for rotation
-    const finalRotation = tattooRotation * (Math.PI / 180) + ((enablePoseDetection && smoothedArmAngle !== null) ? smoothedArmAngle : 0);
-    offCtx.rotate(finalRotation);
-    offCtx.translate(-actualTattooWidth / 2, -actualTattooHeight / 2); // Translate back
-    offCtx.drawImage(tattooImage, 0, 0, actualTattooWidth, actualTattooHeight);
+      meshRef.current.position.set(
+        mid.x + offset.x * width,
+        mid.y + offset.y * height,
+        offset.z
+      );
+      meshRef.current.rotation.z = Math.atan2(dir.y, dir.x) + (rotationDeg * Math.PI) / 180;
 
-    // Composite tattoo using segmentation mask
-    const tempMaskedCanvas = document.createElement('canvas');
-    tempMaskedCanvas.width = canvas.width;
-    tempMaskedCanvas.height = canvas.height;
-    const tempMaskedCtx = tempMaskedCanvas.getContext('2d');
+      const planeW = dir.length() * (scaleFactor / 0.15);
+      const planeH = (planeW * tattooImg.height) / tattooImg.width;
+      meshRef.current.scale.set(planeW, planeH, 1);
+      meshRef.current.visible = true;
+    } else if (!enablePose) {
+      // Manual mode
+      meshRef.current.position.set(offset.x * width, offset.y * height, offset.z);
+      const w = width * scaleFactor;
+      const h = (w * tattooImg.height) / tattooImg.width;
+      meshRef.current.scale.set(w, h, 1);
+      meshRef.current.rotation.z = (rotationDeg * Math.PI) / 180;
+      meshRef.current.visible = true;
+    } else {
+      meshRef.current.visible = false;
+    }
+
+    // Render Three.js scene
+    rendererRef.current.render(sceneRef.current, cameraRef.current);
+
+    // Composite tattoo through segmentation mask
+    const tmp = document.createElement('canvas');
+    tmp.width = width;
+    tmp.height = height;
+    const tctx = tmp.getContext('2d');
     
-    tempMaskedCtx.drawImage(offCanvas, posX, posY, actualTattooWidth, actualTattooHeight);
-    tempMaskedCtx.globalCompositeOperation = 'destination-in';
-    tempMaskedCtx.drawImage(segmentationMask, 0, 0, canvas.width, canvas.height);
+    tctx.drawImage(threeCanvasRef.current, 0, 0);
+    tctx.globalCompositeOperation = 'destination-in';
+    tctx.drawImage(res.segmentationMask, 0, 0, width, height);
 
-    // Draw masked tattoo to main canvas
     ctx.globalCompositeOperation = blendMode;
     ctx.globalAlpha = opacity;
-    ctx.filter = `blur(${blur}px)`;
-    ctx.drawImage(tempMaskedCanvas, 0, 0);
-    
+    ctx.drawImage(tmp, 0, 0);
+
     ctx.restore();
-    animationFrameIdRef.current = requestAnimationFrame(sendVideoFrameToModelsLoop);
+
+    // Schedule next frame
+    frameIdRef.current = requestAnimationFrame(loop);
   }, [
-    tattooImage, tattooSize, tattooPosition, tattooRotation, opacity, blur, blendMode, 
-    enablePoseDetection, smoothedArmAngle, smoothedArmScale, detectedArmCenter
+    tattooImg,
+    blendMode,
+    opacity,
+    enablePose,
+    landmarks,
+    offset,
+    rotationDeg,
+    scaleFactor,
+    loop
   ]);
 
-
-  // --- UI Handlers (Capture, Interaction, Reset) ---
-  const captureARPhoto = () => { /* ... same as before ... */ 
-    if (!canvasRef.current) return
-    const canvas = canvasRef.current
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `ar-tattoo-${design?.style || 'custom'}-${Date.now()}.png`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        URL.revokeObjectURL(url)
-      }
-    }, 'image/png', 1.0)
-  };
-  const getEventCoordinates = (e) => { /* ... same as before ... */ 
-    if (e.touches && e.touches.length > 0) {
-      return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
-    }
-    return { clientX: e.clientX, clientY: e.clientY };
-  };
-  const handleInteractionStart = (e) => { /* ... same as before ... */ 
-    e.preventDefault(); 
-    setIsDragging(true);
-    setShowControls(true); 
-    const coords = getEventCoordinates(e);
-    if (!canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    setDragStart({
-      x: coords.clientX - rect.left,
-      y: coords.clientY - rect.top,
-    });
-    setInitialTattooPosition(tattooPosition);
-  };
-  const handleInteractionMove = (e) => { /* ... same as before ... */ 
-    if (!isDragging || !canvasRef.current) return;
-    e.preventDefault();
-    const coords = getEventCoordinates(e);
-    const rect = canvasRef.current.getBoundingClientRect();
+  // Initialize models
+  const initModels = useCallback(async () => {
+    setLoadingMsg("Loading AI models...");
     
-    const deltaX = coords.clientX - rect.left - dragStart.x;
-    const deltaY = coords.clientY - rect.top - dragStart.y;
+    if (globalPoseInstance && globalSegmentationInstance) {
+      poseRef.current = globalPoseInstance;
+      segRef.current = globalSegmentationInstance;
+      segRef.current.onResults(onSeg);
+      poseRef.current.onResults(onPose);
+      console.log('🔄 Re-using existing MediaPipe instances');
+      return;
+    }
 
-    const deltaPercentX = (deltaX / rect.width) * 100;
-    const deltaPercentY = (deltaY / rect.height) * 100;
+    try {
+      console.log('📦 Loading Selfie Segmentation...');
+      const seg = new SelfieSegmentation({ locateFile });
+      seg.setOptions({ modelSelection: 1 });
+      seg.onResults(onSeg);
+      await seg.initialize();
+      segRef.current = seg;
+      globalSegmentationInstance = seg;
+      console.log('✅ Selfie Segmentation loaded');
 
-    setTattooPosition({
-      x: Math.max(0, Math.min(100, initialTattooPosition.x + deltaPercentX)),
-      y: Math.max(0, Math.min(100, initialTattooPosition.y + deltaPercentY)),
+      console.log('📦 Loading Pose Detection...');
+      const pose = new Pose({ locateFile });
+      pose.setOptions({
+        modelComplexity: 1,
+        smoothLandmarks: true,
+        enableSegmentation: false,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      });
+      pose.onResults(onPose);
+      await pose.initialize();
+      poseRef.current = pose;
+      globalPoseInstance = pose;
+      console.log('✅ Pose Detection loaded');
+    } catch (err) {
+      console.error('❌ Failed to init MediaPipe models:', err);
+      setError('Failed to load AI models. Please try again.');
+    }
+  }, [onSeg, onPose]);
+
+  // Load tattoo image
+  useEffect(() => {
+    if (!imageUrl) {
+      setError("Tattoo image URL is missing.");
+      return;
+    }
+    
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      setTattooImg(img);
+      if (meshRef.current && img) {
+        if (textureRef.current) textureRef.current.dispose();
+        const tex = new THREE.Texture(img);
+        tex.needsUpdate = true;
+        meshRef.current.material.map = tex;
+        meshRef.current.material.needsUpdate = true;
+        textureRef.current = tex;
+      }
+    };
+    img.onerror = () => setError("Failed to load tattoo image");
+    img.src = imageUrl;
+  }, [imageUrl]);
+
+  // Initialize Three.js
+  const initThree = useCallback((w, h) => {
+    console.log('🎮 initThree called with', w, h);
+    
+    // Create off-screen canvas
+    if (!threeCanvasRef.current) {
+      threeCanvasRef.current = document.createElement('canvas');
+    }
+    threeCanvasRef.current.width = w;
+    threeCanvasRef.current.height = h;
+
+    // Setup main canvas dimensions
+    if (canvasRef.current) {
+      canvasRef.current.width = w;
+      canvasRef.current.height = h;
+    }
+
+    // Scene
+    sceneRef.current = new THREE.Scene();
+    
+    // Camera
+    cameraRef.current = new THREE.OrthographicCamera(
+      -w / 2, w / 2, 
+      h / 2, -h / 2, 
+      0.1, 1000
+    );
+    cameraRef.current.position.z = 500;
+
+    // Renderer
+    rendererRef.current = new THREE.WebGLRenderer({ 
+      canvas: threeCanvasRef.current, 
+      alpha: true, 
+      antialias: true,
+      preserveDrawingBuffer: true
+    });
+    rendererRef.current.setSize(w, h);
+    rendererRef.current.setPixelRatio(1); // Use 1 for performance
+    rendererRef.current.setClearColor(0x000000, 0);
+
+    // Lighting
+    sceneRef.current.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const dir = new THREE.DirectionalLight(0xffffff, 0.5);
+    dir.position.set(0, 1, 1);
+    sceneRef.current.add(dir);
+
+    // Mesh
+    const geom = new THREE.PlaneGeometry(1, 1);
+    const mat = new THREE.MeshStandardMaterial({ 
+      transparent: true, 
+      side: THREE.DoubleSide, 
+      roughness: 0.8, 
+      metalness: 0.1 
+    });
+    meshRef.current = new THREE.Mesh(geom, mat);
+    sceneRef.current.add(meshRef.current);
+
+    // Apply texture if available
+    if (tattooImg) {
+      const tex = new THREE.Texture(tattooImg);
+      tex.needsUpdate = true;
+      mat.map = tex;
+      mat.needsUpdate = true;
+      textureRef.current = tex;
+    }
+    
+    console.log('✅ Three.js initialized');
+  }, [tattooImg]);
+
+  // Start camera
+  const startCamera = useCallback(() => {
+    stopCamera();
+    setLoadingMsg("Accessing camera…");
+
+    navigator.mediaDevices
+      .getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: facing,
+        },
+      })
+      .then(async (stream) => {
+        streamRef.current = stream;
+        if (!videoRef.current) return;
+
+        videoRef.current.srcObject = stream;
+
+        const handleMeta = async () => {
+          console.log("📹 Video metadata loaded");
+          const { videoWidth: w, videoHeight: h } = videoRef.current;
+          console.log("📐 Video dimensions:", w, "×", h);
+
+          try {
+            initThree(w, h);
+            setIsLoading(false);
+            setLoadingMsg("Processing video…");
+            await videoRef.current.play();
+            loop();
+          } catch (err) {
+            console.error("❌ Error:", err);
+            setError(`Failed to start AR: ${err.message}`);
+          }
+        };
+
+        videoRef.current.addEventListener("loadedmetadata", handleMeta, { once: true });
+        
+        if (videoRef.current.readyState >= 3) {
+          handleMeta();
+        }
+      })
+      .catch((err) => {
+        console.error("❌ Camera error:", err);
+        setError(`Camera error: ${err.message}`);
+      });
+  }, [facing, initThree, loop, stopCamera]);
+
+  // Initialize on mount
+  useEffect(() => {
+    initModels();
+    const controlsTimer = setTimeout(() => setShowControls(false), 5000);
+
+    return () => {
+      clearTimeout(controlsTimer);
+      stopCamera();
+      if (rendererRef.current) {
+        rendererRef.current.dispose();
+        rendererRef.current = null;
+      }
+      if (textureRef.current) {
+        textureRef.current.dispose();
+        textureRef.current = null;
+      }
+    };
+  }, [initModels, stopCamera]);
+
+  // Start camera when ready
+  useEffect(() => {
+    if (tattooImg && globalSegmentationInstance && globalPoseInstance) {
+      console.log('✅ All resources ready, starting camera');
+      startCamera();
+    }
+  }, [tattooImg, startCamera]);
+
+  // UI handlers
+  const switchCam = () => {
+    setIsLoading(true);
+    setLoadingMsg("Switching camera...");
+    setFacing((p) => (p === "user" ? "environment" : "user"));
+  };
+
+  const beginDrag = (e) => {
+    e.preventDefault();
+    setDragging(true);
+    setShowControls(true);
+    const src = e.touches ? e.touches[0] : e;
+    const rect = canvasRef.current.getBoundingClientRect();
+    setStart({ x: src.clientX - rect.left, y: src.clientY - rect.top });
+    setInitOffset({ x: offset.x, y: offset.y });
+  };
+
+  const moveDrag = (e) => {
+    if (!dragging || !canvasRef.current) return;
+    const src = e.touches ? e.touches[0] : e;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const dx = (src.clientX - rect.left - start.x) / rect.width;
+    const dy = (src.clientY - rect.top - start.y) / rect.height;
+    setOffset({
+      ...offset,
+      x: Math.max(-0.5, Math.min(0.5, initOffset.x + dx)),
+      y: Math.max(-0.5, Math.min(0.5, initOffset.y - dy))
     });
   };
-  const handleInteractionEnd = () => setIsDragging(false); /* ... same as before ... */
-  const resetPosition = () => { /* ... same as before ... */ 
-    setTattooPosition({ x: 50, y: 50 });
-    setTattooSize(80);
-    setTattooRotation(0);
+
+  const endDrag = () => setDragging(false);
+
+  const resetPosition = () => {
+    setScaleFactor(0.15);
+    setOffset({ x: 0, y: 0, z: 0.01 });
+    setRotationDeg(0);
     setOpacity(0.85);
-    setBlur(0.5);
-    setBlendMode('multiply');
-    setEnablePoseDetection(true); // Reset pose detection toggle
+    setBlendMode("multiply");
+    setEnablePose(true);
   };
-  
-  // --- Error Boundary ---
-  if (error) { /* ... same as before ... */ 
+
+  const captureARPhoto = () => {
+    if (!canvasRef.current) return;
+    canvasRef.current.toBlob((blob) => {
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `ar-tattoo-${Date.now()}.png`;
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+    }, 'image/png', 1.0);
+  };
+
+  // Error screen
+  if (error) {
     return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center z-[100] p-4">
-        <div className="bg-gray-800 p-6 rounded-lg shadow-xl text-center text-white max-w-md mx-auto">
-          <Camera className="w-16 h-16 mx-auto mb-4 text-red-400" />
-          <h3 className="text-xl font-semibold mb-2">AR Preview Error</h3>
-          <p className="text-gray-300 mb-6 text-sm">{error}</p>
-          <button
-            onClick={onClose}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-          >
-            Close AR View
+      <div className="fixed inset-0 flex items-center justify-center bg-black z-50 p-4">
+        <div className="bg-gray-800 text-white rounded-xl p-6 max-w-md w-full text-center space-y-4">
+          <Camera className="w-12 h-12 mx-auto text-red-400" />
+          <p className="text-lg font-semibold">AR Preview Error</p>
+          <p className="text-sm text-gray-300">{error}</p>
+          <button onClick={onClose} className="bg-blue-600 rounded-lg px-4 py-2 text-white hover:bg-blue-700 w-full">
+            Close
           </button>
         </div>
       </div>
-    )
+    );
   }
 
-  // --- JSX Structure ---
   return (
-    <div className="fixed inset-0 bg-black z-[100] overflow-hidden select-none" 
-         onTouchMove={(e) => { if(isDragging) e.preventDefault(); }}>
-      {isLoading && ( /* ... same loading UI ... */ 
+    <div className="fixed inset-0 bg-black select-none overflow-hidden z-40" 
+         onTouchMove={(e) => dragging && e.preventDefault()}>
+      {isLoading && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-50">
-          <Loader2 className="w-12 h-12 text-white animate-spin mb-4" />
-          <p className="text-white text-lg">{loadingMessage}</p>
+          <Loader2 className="w-12 h-12 animate-spin text-white mb-4" />
+          <p className="text-white text-lg">{loadingMsg}</p>
         </div>
       )}
 
-      <video ref={videoRef} autoPlay playsInline muted className="hidden" />
-      
+      <video ref={videoRef} muted playsInline autoPlay className="hidden" />
+
       <canvas
         ref={canvasRef}
-        className={`absolute inset-0 w-full h-full object-contain ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-        onMouseDown={handleInteractionStart}
-        onMouseMove={handleInteractionMove}
-        onMouseUp={handleInteractionEnd}
-        onMouseLeave={handleInteractionEnd}
-        onTouchStart={handleInteractionStart}
-        onTouchMove={handleInteractionMove}
-        onTouchEnd={handleInteractionEnd}
-        onClick={() => !isDragging && setShowControls(prev => !prev)}
+        className={`absolute inset-0 w-full h-full object-contain ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
+        onMouseDown={beginDrag}
+        onMouseMove={moveDrag}
+        onMouseUp={endDrag}
+        onMouseLeave={endDrag}
+        onTouchStart={beginDrag}
+        onTouchMove={moveDrag}
+        onTouchEnd={endDrag}
+        onClick={() => !dragging && setShowControls((p) => !p)}
       />
 
-      {/* Header Controls */}
-      <div className={`fixed top-0 left-0 right-0 bg-gradient-to-b from-black/60 to-transparent p-3 sm:p-4 transition-all duration-300 z-20 ${showControls ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'}`}>
+      {/* Header controls */}
+      <div className={`fixed top-0 left-0 right-0 bg-gradient-to-b from-black/60 to-transparent p-3 sm:p-4 transition-all duration-300 z-20 ${
+        showControls ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
+      }`}>
         <div className="flex items-center justify-between max-w-screen-lg mx-auto">
-          <h3 className="text-white font-semibold text-base sm:text-lg truncate pr-2">AR Tattoo Preview</h3>
+          <h3 className="text-white font-semibold text-base sm:text-lg truncate pr-2">3D AR Tattoo</h3>
           <div className="flex items-center gap-1 sm:gap-2">
-             <button
-              onClick={() => setEnablePoseDetection(prev => !prev)}
-              className={`p-2 rounded-full text-white transition-colors backdrop-blur-md ${enablePoseDetection ? 'bg-green-500/30 hover:bg-green-500/40' : 'bg-white/10 hover:bg-white/20'}`}
-              title={enablePoseDetection ? "Disable Arm Tracking" : "Enable Arm Tracking"}
+            <button
+              onClick={() => setEnablePose(prev => !prev)}
+              className={`p-2 rounded-full text-white transition-colors backdrop-blur-md ${
+                enablePose ? 'bg-green-500/30 hover:bg-green-500/40' : 'bg-white/10 hover:bg-white/20'
+              }`}
+              title={enablePose ? "Disable Arm Tracking" : "Enable Arm Tracking"}
             >
               <User className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
-            <button onClick={switchCamera} className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-colors" title="Switch camera">
+            <button
+              onClick={switchCam}
+              className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20"
+              title="Switch camera"
+            >
               <SwitchCamera className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
-            <button onClick={() => setShowAdvancedControls(prev => !prev)} className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-colors" title="Advanced settings">
+            <button
+              onClick={() => setShowAdv(prev => !prev)}
+              className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20"
+              title="Advanced settings"
+            >
               <Sliders className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
-            <button onClick={onClose} className="p-2 bg-red-500/20 backdrop-blur-md rounded-full text-white hover:bg-red-500/40 transition-colors" title="Close AR">
+            <button
+              onClick={onClose}
+              className="p-2 bg-red-500/20 backdrop-blur-md rounded-full text-white hover:bg-red-500/40"
+              title="Close AR"
+            >
               <X className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
           </div>
         </div>
       </div>
-      
-      {/* Advanced Controls Panel (conditionally rendered) */}
-      {showAdvancedControls && showControls && (
-          <div className="fixed top-16 sm:top-20 right-3 sm:right-4 bg-black/70 backdrop-blur-lg rounded-lg p-3 sm:p-4 text-white w-[260px] sm:w-[280px] z-30 shadow-xl">
-            <h4 className="font-semibold mb-3 text-sm sm:text-base">Advanced Settings</h4>
-            <div className="space-y-3 sm:space-y-4">
-              <div>
-                <label className="text-xs sm:text-sm mb-1 block">Opacity: {Math.round(opacity * 100)}%</label>
-                <input type="range" min="0.1" max="1" step="0.01" value={opacity} onChange={(e) => setOpacity(parseFloat(e.target.value))} className="w-full ar-slider" />
-              </div>
-              <div>
-                <label className="text-xs sm:text-sm mb-1 block">Edge Blur: {blur}px</label>
-                <input type="range" min="0" max="5" step="0.1" value={blur} onChange={(e) => setBlur(parseFloat(e.target.value))} className="w-full ar-slider" />
-              </div>
-              <div>
-                <label className="text-xs sm:text-sm mb-1 block">Rotation: {tattooRotation}°</label>
-                <input type="range" min="-180" max="180" value={tattooRotation} onChange={(e) => setTattooRotation(parseInt(e.target.value))} className="w-full ar-slider" />
-              </div>
-              <div>
-                <label className="text-xs sm:text-sm mb-1 block">Blend Mode:</label>
-                <select value={blendMode} onChange={(e) => setBlendMode(e.target.value)} className="w-full p-2 bg-white/10 rounded text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="multiply">Multiply</option>
-                  <option value="screen">Screen</option>
-                  <option value="overlay">Overlay</option>
-                  <option value="normal">Normal</option>
-                  <option value="color-burn">Color Burn</option>
-                  <option value="color-dodge">Color Dodge</option>
-                  <option value="soft-light">Soft Light</option>
-                  <option value="hard-light">Hard Light</option>
-                </select>
-              </div>
+
+      {/* Advanced controls panel */}
+      {showAdv && showControls && (
+        <div className="fixed top-16 sm:top-20 right-3 sm:right-4 bg-black/70 backdrop-blur-lg rounded-lg p-3 sm:p-4 text-white w-[260px] sm:w-[280px] z-30 shadow-xl">
+          <h4 className="font-semibold mb-3 text-sm sm:text-base">Advanced Settings</h4>
+          <div className="space-y-3 sm:space-y-4">
+            <div>
+              <label className="text-xs sm:text-sm mb-1 block">Opacity: {Math.round(opacity * 100)}%</label>
+              <input
+                type="range"
+                min="0.1"
+                max="1"
+                step="0.01"
+                value={opacity}
+                onChange={(e) => setOpacity(parseFloat(e.target.value))}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="text-xs sm:text-sm mb-1 block">Rotation: {rotationDeg}°</label>
+              <input
+                type="range"
+                min="-180"
+                max="180"
+                value={rotationDeg}
+                onChange={(e) => setRotationDeg(parseInt(e.target.value))}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="text-xs sm:text-sm mb-1 block">Blend Mode:</label>
+              <select
+                value={blendMode}
+                onChange={(e) => setBlendMode(e.target.value)}
+                className="w-full p-2 bg-white/10 rounded text-xs sm:text-sm"
+              >
+                <option value="multiply">Multiply</option>
+                <option value="screen">Screen</option>
+                <option value="overlay">Overlay</option>
+                <option value="normal">Normal</option>
+              </select>
             </div>
           </div>
+        </div>
       )}
 
-
-      {/* Bottom Controls */}
-      <div className={`fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/50 to-transparent transition-all duration-300 z-20 ${showControls ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'}`}>
-        {/* ... same bottom controls UI: Size, Reset, Save ... */}
-        <div className="px-4 sm:px-6 pt-3 sm:pt-4 pb-safe">
+      {/* Bottom controls */}
+      <div className={`fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/50 to-transparent transition-all duration-300 z-20 ${
+        showControls ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
+      }`}>
+        <div className="px-4 sm:px-6 pt-3 sm:pt-4 pb-6">
           <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
             <ZoomOut className="w-5 h-5 sm:w-6 sm:h-6 text-white opacity-80" />
             <input
-              type="range" min="20" max="200" value={tattooSize}
-              onChange={(e) => setTattooSize(parseInt(e.target.value))}
-              className="flex-1 ar-slider"
-              aria-label="Tattoo size"
+              type="range"
+              min="0.05"
+              max="0.5"
+              step="0.01"
+              value={scaleFactor}
+              onChange={(e) => setScaleFactor(parseFloat(e.target.value))}
+              className="flex-1"
             />
             <ZoomIn className="w-5 h-5 sm:w-6 sm:h-6 text-white opacity-80" />
           </div>
           <div className="flex gap-2 sm:gap-3">
-            <button onClick={resetPosition} className="flex-1 bg-white/10 backdrop-blur-md text-white py-2.5 sm:py-3 rounded-xl font-medium hover:bg-white/20 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 text-sm sm:text-base">
-              <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" /> Reset
+            <button
+              onClick={resetPosition}
+              className="flex-1 bg-white/10 backdrop-blur-md text-white py-2.5 sm:py-3 rounded-xl font-medium hover:bg-white/20"
+            >
+              <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5 inline mr-1.5" /> Reset
             </button>
-            <button onClick={captureARPhoto} className="flex-1 bg-blue-500 text-white py-2.5 sm:py-3 rounded-xl font-medium hover:bg-blue-600 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 text-sm sm:text-base">
-              <Download className="w-4 h-4 sm:w-5 sm:h-5" /> Save
+            <button
+              onClick={captureARPhoto}
+              className="flex-1 bg-blue-500 text-white py-2.5 sm:py-3 rounded-xl font-medium hover:bg-blue-600"
+            >
+              <Download className="w-4 h-4 sm:w-5 sm:h-5 inline mr-1.5" /> Save
             </button>
           </div>
         </div>
       </div>
-      
-      {!isDragging && showControls && ( /* ... same tap instructions ... */ 
+
+      {/* Instructions */}
+      {!dragging && showControls && (
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10">
           <div className="bg-black/60 backdrop-blur-sm text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm shadow-lg">
             <Move className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1.5 sm:mr-2" />
@@ -545,45 +665,6 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
           </div>
         </div>
       )}
-
-      <style jsx global>{`
-        .ar-slider { /* ... same slider styles ... */ 
-          -webkit-appearance: none;
-          appearance: none;
-          width: 100%;
-          height: 8px;
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 5px;
-          outline: none;
-          transition: background 0.3s;
-        }
-        .ar-slider:hover {
-          background: rgba(255, 255, 255, 0.3);
-        }
-        .ar-slider::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 20px;
-          height: 20px;
-          background: #3B82F6; /* Blue-500 */
-          border-radius: 50%;
-          cursor: grab;
-          border: 3px solid white;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-        }
-        .ar-slider::-moz-range-thumb {
-          width: 20px;
-          height: 20px;
-          background: #3B82F6;
-          border-radius: 50%;
-          cursor: grab;
-          border: 3px solid white;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-        }
-        .pb-safe { 
-          padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem); 
-        }
-      `}</style>
     </div>
-  )
+  );
 }

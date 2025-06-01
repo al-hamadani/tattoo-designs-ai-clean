@@ -10,7 +10,14 @@ import {
 } from 'lucide-react'
 import SEO from '../components/SEO'
 import RealSocialSharing from '../components/RealSocialSharing'
-import RealisticARPreview from '../components/RealisticARPreview'
+//import RealisticARPreview from '../components/RealisticARPreview'
+// pages/generate.js
+import dynamic from 'next/dynamic'
+const RealisticARPreview = dynamic(
+  () => import('../components/RealisticARPreview'),
+  { ssr: false }
+)
+
 
 export default function Generate() {
   const [prompt, setPrompt] = useState('')
@@ -712,3 +719,4 @@ export default function Generate() {
     </>
   )
 }
+
