@@ -1,71 +1,59 @@
 // components/RealisticARPreview/hooks/useMediaPipe.js
 import { useRef, useCallback } from 'react';
-import { SelfieSegmentation } from '@mediapipe/selfie_segmentation';
 import { Pose } from '@mediapipe/pose';
+import { SelfieSegmentation } from '@mediapipe/selfie_segmentation';
 
-const locateFile = (file) => `/mediapipe/${file}`;
+/* ---------- CDN helper for Pose assets ---------- */
+const poseLocate = (file) =>
+  `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
 
-// Persistent instances across remounts
-let globalPoseInstance = null;
-let globalSegmentationInstance = null;
+/* ---------- singleton keep-alives (avoid re-download) ---------- */
+let poseSingleton = null;
+let segSingleton  = null;
 
 export const useMediaPipe = ({ onPoseResults, onSegmentationResults }) => {
   const poseRef = useRef(null);
-  const segRef = useRef(null);
+  const segRef  = useRef(null);
 
+  /* one-time bootstrap */
   const initModels = useCallback(async () => {
     try {
-      // Initialize Segmentation
-      if (!globalSegmentationInstance) {
-        console.log('📦 Creating new Selfie Segmentation...');
-        const seg = new SelfieSegmentation({ locateFile });
-        seg.setOptions({ modelSelection: 1 });
-        await seg.initialize();
-        globalSegmentationInstance = seg;
+      /* Selfie Segmentation (SIMD build from CDN) */
+      if (!segSingleton) {
+        console.log('📦 Loading Selfie Segmentation…');
+        segSingleton = new SelfieSegmentation({ modelSelection: 1 });
+        await segSingleton.initialize();            // pulls wasm + JS
       }
-      
-      segRef.current = globalSegmentationInstance;
+      segRef.current = segSingleton;
       segRef.current.onResults(onSegmentationResults);
       console.log('✅ Segmentation ready');
 
-      // Initialize Pose
-      if (!globalPoseInstance) {
-        console.log('📦 Creating new Pose Detection...');
-        const pose = new Pose({ locateFile });
-        pose.setOptions({
+      /* Pose Detection */
+      if (!poseSingleton) {
+        console.log('📦 Loading Pose Detection…');
+        poseSingleton = new Pose({ locateFile: poseLocate });
+        poseSingleton.setOptions({
           modelComplexity: 1,
           smoothLandmarks: true,
-          enableSegmentation: false,
           minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5,
+          minTrackingConfidence: 0.5
         });
-        await pose.initialize();
-        globalPoseInstance = pose;
+        await poseSingleton.initialize();
       }
-      
-      poseRef.current = globalPoseInstance;
+      poseRef.current = poseSingleton;
       poseRef.current.onResults(onPoseResults);
       console.log('✅ Pose ready');
-
-    } catch (err) {
-      console.error('❌ Failed to init MediaPipe:', err);
-      throw new Error('Failed to load AI models');
+    } catch (e) {
+      console.error('❌ Failed to init MediaPipe models:', e);
+      throw e;
     }
   }, [onPoseResults, onSegmentationResults]);
 
+  /* feed a frame through both models */
   const sendFrame = useCallback(async (video) => {
-    if (segRef.current) {
-      await segRef.current.send({ image: video });
-    }
-    if (poseRef.current) {
-      await poseRef.current.send({ image: video });
-    }
+    if (segRef.current)  await segRef.current.send({ image: video });
+    if (poseRef.current) await poseRef.current.send({ image: video });
   }, []);
 
-  return {
-    poseRef,
-    segRef,
-    initModels,
-    sendFrame
-  };
+  return { poseRef, segRef, initModels, sendFrame };
 };

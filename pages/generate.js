@@ -10,13 +10,12 @@ import {
 } from 'lucide-react'
 import SEO from '../components/SEO'
 import RealSocialSharing from '../components/RealSocialSharing'
-//import RealisticARPreview from '../components/RealisticARPreview'
-// pages/generate.js
 import dynamic from 'next/dynamic'
 const RealisticARPreview = dynamic(
-  () => import('../components/RealisticARPreview'),
+  () => import('../components/RealisticARPreview'),   // ← folder, not .js
   { ssr: false }
-)
+);
+
 
 
 export default function Generate() {
