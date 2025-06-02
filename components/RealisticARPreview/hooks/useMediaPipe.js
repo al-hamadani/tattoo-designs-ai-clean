@@ -118,11 +118,11 @@ export const useMediaPipe = ({ onPoseResults, onSegmentationResults }) => {
   
     try {
       // Log frame sending
-      console.log('📤 Sending frame to models', {
-        videoWidth: videoElement.videoWidth,
-        videoHeight: videoElement.videoHeight,
-        readyState: videoElement.readyState
-      });
+      //console.log('📤 Sending frame to models', {
+       //  videoWidth: videoElement.videoWidth,
+       //  videoHeight: videoElement.videoHeight,
+        // readyState: videoElement.readyState
+       //});
       
       // Send to segmentation
       if (segRef.current && segRef.current.send) {

@@ -1,4 +1,3 @@
-// components/RealisticARPreview/RealisticARPreview.js
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useCamera }        from './hooks/useCamera';
 import { useMediaPipe }     from './hooks/useMediaPipe';
@@ -28,8 +27,6 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
   const frameCountRef = useRef(0);
   const lastCallbackRef = useRef(0);
   const processSegmentationRef = useRef();
-
-  // --- ADD modelsReadyRef here
   const modelsReadyRef = useRef(false);
 
   const [isLoading, setIsLoading]   = useState(true);
@@ -56,11 +53,25 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
 
   const { startCamera, stopCamera } = useCamera(videoRef, settings.facing);
   const { landmarks, detectedParts, processResults } = usePoseDetection();
+
+  // HOOK: useThreeScene
   const {
     scene, camera, renderer, mesh, threeCanvas,
     initThree, updateMesh, cleanup: cleanupThree
   } = useThreeScene(imageUrl);
-  // --- Use destructuring with setModelsReady
+
+  // Three.js debug effect
+  useEffect(() => {
+    console.log('🔍 Three.js objects status:', {
+      scene: !!scene,
+      camera: !!camera,
+      renderer: !!renderer,
+      mesh: !!mesh,
+      threeCanvas: !!threeCanvas
+    });
+  }, [scene, camera, renderer, mesh, threeCanvas]);
+
+  // MediaPipe (with setModelsReady included in destructuring)
   const {
     poseRef, segRef, initModels, sendFrame, modelsReady, setModelsReady
   } = useMediaPipe({
@@ -74,37 +85,18 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     }
   });
 
-  // --- Keep modelsReady ref in sync with value from hook
+  // Keep modelsReadyRef in sync
   useEffect(() => {
     modelsReadyRef.current = modelsReady;
   }, [modelsReady]);
 
-  // Define processSegmentation with dependencies
+  // SAFER, DEBUGGING processSegmentation
   const processSegmentation = useCallback((results) => {
-    console.log('🎯 processSegmentation called!', {
-      hasResults: !!results,
-      hasSegmentationMask: !!(results && results.segmentationMask),
-      frameCount: frameCountRef.current++,
-      hasMesh: !!mesh,
-      hasRenderer: !!renderer
-    });
-
+    frameCountRef.current++;
     lastCallbackRef.current = Date.now();
 
-    if (
-      !canvasRef.current ||
-      !videoRef.current  ||
-      !mesh              ||
-      !renderer          ||
-      !results.segmentationMask
-    ) {
-      console.log('⚠️ Missing dependencies:', {
-        canvas: !!canvasRef.current,
-        video: !!videoRef.current,
-        mesh: !!mesh,
-        renderer: !!renderer,
-        mask: !!(results && results.segmentationMask)
-      });
+    if (!canvasRef.current || !videoRef.current) {
+      console.log('⚠️ Missing canvas or video');
       processingRef.current = false;
       return;
     }
@@ -112,7 +104,106 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     const ctx = canvasRef.current.getContext('2d');
     const { width, height } = canvasRef.current;
 
-    // FPS calculation
+    // Draw base video frame
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(videoRef.current, 0, 0, width, height);
+
+    // Debug info on canvas
+    ctx.fillStyle = 'red';
+    ctx.fillRect(10, 10, 50, 50);
+    ctx.fillStyle = 'white';
+    ctx.font = '16px Arial';
+    ctx.fillText(`Frame: ${frameCountRef.current}`, 10, 80);
+
+    // Only try Three.js rendering if all components are ready
+    if (mesh && renderer && camera && scene && threeCanvas) {
+      try {
+        const transform = calculateTattooTransform({
+          bodyPart: 'manual',
+          detectedParts,
+          landmarks,
+          dimensions: { width, height },
+          settings,
+          design
+        });
+
+        // Log transform details every 60 frames
+        if (frameCountRef.current % 60 === 0) {
+          console.log('🎯 Transform:', {
+            visible: transform.visible,
+            position: transform.position,
+            scale: transform.scale,
+            rotation: transform.rotation
+          });
+        }
+
+        if (transform.visible) {
+          updateMesh(transform);
+
+          // Clear Three.js canvas (for transparent BG)
+          if (renderer.setClearColor) renderer.setClearColor(0x000000, 0);
+          if (renderer.clear) renderer.clear();
+
+          // Render Three.js scene
+          renderer.render(scene, camera);
+
+          // Draw Three.js canvas to main canvas
+          ctx.save();
+          ctx.globalAlpha = settings.opacity;
+          ctx.globalCompositeOperation = settings.blendMode;
+
+          // Check if Three.js canvas has content
+          let hasContent = false;
+          try {
+            const threeCtx = threeCanvas.getContext && threeCanvas.getContext('2d');
+            if (threeCtx && threeCtx.getImageData) {
+              const imageData = threeCtx.getImageData(0, 0, 1, 1);
+              hasContent = imageData.data.some(pixel => pixel > 0);
+            }
+          } catch (e) {
+            // In case threeCanvas is a WebGL canvas and getContext('2d') fails, just skip this debug
+          }
+
+          if (frameCountRef.current % 60 === 0) {
+            console.log('🖼️ Three.js canvas:', {
+              width: threeCanvas.width,
+              height: threeCanvas.height,
+              hasContent,
+              meshVisible: mesh.visible,
+              meshScale: mesh.scale,
+              meshPosition: mesh.position
+            });
+          }
+
+          ctx.drawImage(threeCanvas, 0, 0, width, height);
+          ctx.restore();
+
+          // Debug: Draw tattoo position indicator
+          ctx.strokeStyle = 'lime';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(
+            transform.position.x + width / 2 - transform.scale.x / 2,
+            transform.position.y + height / 2 - transform.scale.y / 2,
+            transform.scale.x,
+            transform.scale.y
+          );
+        }
+      } catch (err) {
+        console.error('❌ Render error:', err);
+      }
+    } else {
+      if (frameCountRef.current === 1) {
+        console.log('⏳ Three.js not ready:', {
+          mesh: !!mesh,
+          renderer: !!renderer,
+          camera: !!camera,
+          scene: !!scene,
+          threeCanvas: !!threeCanvas
+        });
+      }
+    }
+
+    // Update FPS
     const now = performance.now();
     const fps = Math.round(1000 / (now - (debug.last || now)));
     setDebug({
@@ -122,44 +213,15 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
       callbacks: frameCountRef.current
     });
 
-    // Draw base video frame
-    ctx.clearRect(0, 0, width, height);
-    ctx.drawImage(videoRef.current, 0, 0, width, height);
-
-    // Test: red square
-    ctx.fillStyle = 'red';
-    ctx.fillRect(10, 10, 50, 50);
-    ctx.fillText(`Frame: ${frameCountRef.current}`, 10, 80);
-
-    // Calculate tattoo transform (manual mode for now)
-    const transform = calculateTattooTransform({
-      bodyPart    : 'manual',
-      detectedParts,
-      landmarks,
-      dimensions  : { width, height },
-      settings,
-      design
-    });
-
-    if (transform.visible && mesh) {
-        updateMesh(transform);
-        renderer.render(scene, camera);  // Use the camera from the hook
-        
-        // Test: draw Three.js canvas directly without masking
-        ctx.globalAlpha = 0.5;
-        ctx.drawImage(threeCanvas, 0, 0);
-        ctx.globalAlpha = 1.0;
-      }
-
     processingRef.current = false;
-  }, [mesh, renderer, scene, landmarks, detectedParts, settings, debug, design, updateMesh, threeCanvas]);
+  }, [mesh, renderer, camera, scene, landmarks, detectedParts, settings, debug.last, design, updateMesh, threeCanvas]);
 
-  // Update the ref whenever processSegmentation changes
+  // Always update ref
   useEffect(() => {
     processSegmentationRef.current = processSegmentation;
   }, [processSegmentation]);
 
-  // --- UPDATE: loop now uses modelsReadyRef (the fix for stale closure)
+  // Animation loop
   const loop = useCallback(async () => {
     if (!videoRef.current) {
       console.warn('⚠️ No video element in loop');
@@ -179,22 +241,22 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
       console.warn('⚠️ No callbacks for', timeSinceLastCallback, 'ms');
     }
 
-    if (!processingRef.current && modelsReadyRef.current) { // <-- use ref, NOT state
+    if (!processingRef.current && modelsReadyRef.current) {
       processingRef.current = true;
       try {
-        console.log('🔄 Frame', frameCountRef.current, 'sending...');
+       // console.log('🔄 Frame', frameCountRef.current, 'sending...');
         await sendFrame(videoRef.current);
       } catch (err) {
-        console.error('sendFrame error:', err);
+       // console.error('sendFrame error:', err);
       } finally {
         processingRef.current = false;
       }
     } else if (!modelsReadyRef.current) {
-      console.log('⏳ Waiting for models...', { ready: modelsReadyRef.current });
+     // console.log('⏳ Waiting for models...', { ready: modelsReadyRef.current });
     }
 
     frameIdRef.current = requestAnimationFrame(loop);
-  }, [sendFrame]); // <-- modelsReady removed from deps
+  }, [sendFrame]);
 
   // AR Boot
   useEffect(() => {
@@ -211,7 +273,6 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
         if (!mounted) return;
 
         setLoadingMsg('Loading AI models…');
-
         await initModels();
         if (!mounted) return;
 
@@ -252,7 +313,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
         frameIdRef.current = null;
       }
     };
-  }, []); // deps can stay empty since all hooks are stable and loop uses refs
+  }, []);
 
   // Drag handlers
   const handleDragStart = (e) => {
