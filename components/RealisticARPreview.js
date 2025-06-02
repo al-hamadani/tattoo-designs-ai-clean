@@ -159,71 +159,67 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     const ctx = canvas.getContext('2d');
     const { width, height } = canvas;
   
-    // Draw base video frame
     ctx.save();
     ctx.clearRect(0, 0, width, height);
     ctx.drawImage(videoRef.current, 0, 0, width, height);
   
-    // Update & render tattoo mesh
-    if (enablePose && landmarks.elbow && landmarks.wrist) {
-      const sx = width, sy = height;
-      const elbow = new THREE.Vector3(
-        landmarks.elbow.x * sx - width / 2,
-        landmarks.elbow.y * sy - height / 2,
-        0
-      );
-      const wrist = new THREE.Vector3(
-        landmarks.wrist.x * sx - width / 2,
-        landmarks.wrist.y * sy - height / 2,
-        0
-      );
-      const mid = elbow.clone().add(wrist).multiplyScalar(0.5);
-      const dir = wrist.clone().sub(elbow);
+    // [Pose code here...]
   
-      meshRef.current.position.set(
-        mid.x + offset.x * width,
-        mid.y + offset.y * height,
-        offset.z
-      );
-      meshRef.current.rotation.z = Math.atan2(dir.y, dir.x) + (rotationDeg * Math.PI) / 180;
-  
-      const planeW = dir.length() * (scaleFactor / 0.15);
-      const planeH = (planeW * tattooImg.height) / tattooImg.width;
-      meshRef.current.scale.set(planeW, planeH, 1);
-      meshRef.current.visible = true;
-    } else if (!enablePose) {
-      // Manual mode
-      meshRef.current.position.set(offset.x * width, offset.y * height, offset.z);
-      const w = width * scaleFactor;
-      const h = (w * tattooImg.height) / tattooImg.width;
-      meshRef.current.scale.set(w, h, 1);
-      meshRef.current.rotation.z = (rotationDeg * Math.PI) / 180;
-      meshRef.current.visible = true;
-    } else {
-      meshRef.current.visible = false;
+    // --------- Tattoo compositing with realism tricks ---------
+    // 1. Render tattoo to tmp buffer
+    let tmp = tmpCanvasRef.current;
+    if (!tmp) {
+      tmp = document.createElement('canvas');
+      tmp.width = width;
+      tmp.height = height;
+      tmpCanvasRef.current = tmp;
     }
-  
-    // --- SEGMENTATION MASK BLENDING FOR REALISTIC TATTOO PLACEMENT ---
-  
-    // Render tattoo to an offscreen buffer, then mask it
-    const tmp = document.createElement('canvas');
-    tmp.width = width;
-    tmp.height = height;
     const tctx = tmp.getContext('2d');
-  
-    // Draw tattoo from Three.js output
+    tctx.clearRect(0, 0, width, height);
     tctx.drawImage(threeCanvasRef.current, 0, 0);
   
-    // Mask tattoo using segmentation mask ("destination-in": keep only where mask is present)
+    // 2. Blur/feather the mask edge before applying it to the tattoo
+    tctx.save();
+    tctx.filter = 'blur(4px)';
     tctx.globalCompositeOperation = 'destination-in';
     tctx.drawImage(res.segmentationMask, 0, 0, width, height);
+    tctx.restore();
   
-    // Draw the masked tattoo onto the main canvas with blend mode and opacity
-    ctx.globalCompositeOperation = blendMode;
+    // 3. Sample average skin color and tint tattoo for realism
+    let avgSkin = { r: 220, g: 200, b: 180 };
+    try {
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-in';
+      ctx.drawImage(res.segmentationMask, 0, 0, width, height);
+      const imgData = ctx.getImageData(0, 0, width, height).data;
+      let r=0, g=0, b=0, n=0;
+      for(let i=0;i<imgData.length;i+=4){
+        if (imgData[i+3]>100) { r+=imgData[i]; g+=imgData[i+1]; b+=imgData[i+2]; n++; }
+      }
+      if (n>0) avgSkin = { r: r/n, g: g/n, b: b/n };
+      ctx.restore();
+    } catch(e) {}
+    tctx.save();
+    tctx.globalAlpha = 0.15;
+    tctx.globalCompositeOperation = "color";
+    tctx.fillStyle = `rgb(${avgSkin.r|0},${avgSkin.g|0},${avgSkin.b|0})`;
+    tctx.fillRect(0,0,width,height);
+    tctx.restore();
+  
+    // 4. Optional: shadow under tattoo
+    tctx.save();
+    tctx.globalCompositeOperation = "destination-in";
+    tctx.filter = "blur(6px)";
+    tctx.globalAlpha = 0.20;
+    tctx.drawImage(threeCanvasRef.current, 4, 4, width, height); // offset for shadow
+    tctx.restore();
+  
+    // 5. Main blend
+    ctx.globalCompositeOperation = blendMode; // "multiply", "soft-light", etc.
     ctx.globalAlpha = opacity;
     ctx.drawImage(tmp, 0, 0);
   
-    // OPTIONAL: Draw background over areas that are NOT person (to put tattoo "under" the person)
+    // 6. Background restoration for realism (tattoo is "under" the person)
     ctx.globalAlpha = 1.0;
     ctx.globalCompositeOperation = 'destination-over';
     ctx.drawImage(videoRef.current, 0, 0, width, height);
@@ -243,6 +239,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     scaleFactor,
     loop
   ]);
+  
   
 
   // Initialize models
