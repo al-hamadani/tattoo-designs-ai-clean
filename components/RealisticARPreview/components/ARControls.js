@@ -1,6 +1,6 @@
 // components/RealisticARPreview/components/ARControls.js
 import { User, SwitchCamera, Sliders, X, RotateCcw, Download, ZoomIn, ZoomOut, Info } from "lucide-react";
-
+import { BodyPartSelector } from './BodyPartSelector';
 export const ARControls = ({
   show,
   settings,
@@ -11,7 +11,9 @@ export const ARControls = ({
   onClose,
   onReset,
   onCapture,
-  onScaleChange
+  onScaleChange,
+  onBodyPartChange
+
 }) => {
   // Format detected parts for display
   const getDetectedPartsInfo = () => {
@@ -37,10 +39,13 @@ export const ARControls = ({
           <div className="flex items-center gap-2">
             <h3 className="text-white font-semibold text-base sm:text-lg">AR Tattoo Preview</h3>
             {settings.enablePose && (
-              <div className="hidden sm:flex items-center gap-2 text-xs text-white/70 bg-white/10 px-2 py-1 rounded">
-                <Info className="w-3 h-3" />
-                {getDetectedPartsInfo()}
-              </div>
+              <BodyPartSelector
+                              currentBodyPart={settings.bodyPart}
+                              onBodyPartChange={onBodyPartChange}
+                              detectedParts={detectedParts}
+                              isExpanded={true}
+                              onToggleExpanded={() => {}}
+                       />
             )}
           </div>
           <div className="flex items-center gap-1 sm:gap-2">

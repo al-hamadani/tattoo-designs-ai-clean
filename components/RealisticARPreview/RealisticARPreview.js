@@ -90,6 +90,19 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     modelsReadyRef.current = modelsReady;
   }, [modelsReady]);
 
+  // Add the body part change handler
+  const handleBodyPartChange = useCallback((bodyPart) => {
+    setSettings(prev => ({ ...prev, bodyPart }));
+    // Reset offset when changing body parts for better initial placement
+    if (bodyPart !== 'manual') {
+      setSettings(prev => ({
+        ...prev,
+        bodyPart,
+        offset: { x: 0, y: 0, z: 0.01 }
+      }));
+    }
+  }, []);
+
   // SAFER, DEBUGGING processSegmentation
   const processSegmentation = useCallback((results) => {
     frameCountRef.current++;
@@ -119,7 +132,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     if (mesh && renderer && camera && scene && threeCanvas) {
       try {
         const transform = calculateTattooTransform({
-          bodyPart: 'manual',
+          bodyPart: settings.bodyPart,
           detectedParts,
           landmarks,
           dimensions: { width, height },
@@ -424,6 +437,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
         onScaleChange={(scale) =>
           setSettings((s) => ({ ...s, scaleFactor: scale }))
         }
+        onBodyPartChange={handleBodyPartChange}
       />
 
       {showAdvanced && (
