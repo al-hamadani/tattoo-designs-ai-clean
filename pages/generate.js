@@ -10,12 +10,14 @@ import {
 } from 'lucide-react'
 import SEO from '../components/SEO'
 import RealSocialSharing from '../components/RealSocialSharing'
-import dynamic from 'next/dynamic'
+// pages/generate.js
+import dynamic from 'next/dynamic';
+
+// Use the dynamic wrapper
 const RealisticARPreview = dynamic(
-  () => import('../components/RealisticARPreview'),   // ← folder, not .js
+  () => import('../components/RealisticARPreview/ARPreviewDynamic'),
   { ssr: false }
 );
-
 
 
 export default function Generate() {

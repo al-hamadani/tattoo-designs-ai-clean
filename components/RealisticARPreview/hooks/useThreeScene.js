@@ -1,7 +1,7 @@
 // components/RealisticARPreview/hooks/useThreeScene.js
 import { useRef, useCallback, useEffect, useState } from 'react';
 import * as THREE from 'three';
-
+import { webglContextManager } from '../utils/webglContextManager';
 export const useThreeScene = (imageUrl) => {
   const sceneRef = useRef(null);
   const cameraRef = useRef(null);
@@ -44,7 +44,10 @@ export const useThreeScene = (imageUrl) => {
 
   const initThree = useCallback((width, height) => {
     console.log('🎮 Initializing Three.js:', width, height);
-    
+    if (!webglContextManager.canCreateContext()) {
+            console.error('Too many WebGL contexts active');
+            throw new Error('WebGL context limit reached');
+    }
     // Create off-screen canvas
     if (!threeCanvasRef.current) {
       threeCanvasRef.current = document.createElement('canvas');
@@ -72,6 +75,7 @@ export const useThreeScene = (imageUrl) => {
     });
     rendererRef.current.setSize(width, height);
     rendererRef.current.setClearColor(0x000000, 0);
+    webglContextManager.registerContext();
 
     // Lighting
     sceneRef.current.add(new THREE.AmbientLight(0xffffff, 0.8));
@@ -110,12 +114,27 @@ export const useThreeScene = (imageUrl) => {
   const cleanup = useCallback(() => {
     if (rendererRef.current) {
       rendererRef.current.dispose();
+      rendererRef.current.forceContextLoss();
+      rendererRef.current.context = null;
+      rendererRef.current.domElement = null;
       rendererRef.current = null;
+      webglContextManager.unregisterContext();
     }
     if (textureRef.current) {
       textureRef.current.dispose();
       textureRef.current = null;
     }
+    if (meshRef.current) {
+     meshRef.current.geometry.dispose();
+      meshRef.current.material.dispose();
+      meshRef.current = null;
+    }
+    if (sceneRef.current) {
+      sceneRef.current.clear();
+      sceneRef.current = null;
+    }
+    cameraRef.current = null;
+    threeCanvasRef.current = null;
   }, []);
 
   useEffect(() => cleanup, [cleanup]);
@@ -127,6 +146,7 @@ export const useThreeScene = (imageUrl) => {
     mesh: meshRef.current,
     threeCanvas: threeCanvasRef.current,
     initThree,
-    updateMesh
+    updateMesh,
+    cleanup
   };
 };
