@@ -58,9 +58,10 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
   const [rotationDeg, setRotationDeg] = useState(0);
   
   // Rendering
-  const [opacity, setOpacity] = useState(0.85);
+  const [opacity, setOpacity] = useState(0.70);
   const [blendMode, setBlendMode] = useState("multiply");
   const [tattooImg, setTattooImg] = useState(null);
+ 
   
   // UI & interaction
   const [dragging, setDragging] = useState(false);
@@ -142,21 +143,27 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
 
   // Segmentation callback
   const onSeg = useCallback((res) => {
-    if (!canvasRef.current || !videoRef.current || !tattooImg || 
-        !meshRef.current || !rendererRef.current || !res.segmentationMask) {
+    if (
+      !canvasRef.current ||
+      !videoRef.current ||
+      !tattooImg ||
+      !meshRef.current ||
+      !rendererRef.current ||
+      !res.segmentationMask
+    ) {
       frameIdRef.current = requestAnimationFrame(loop);
       return;
     }
-
+  
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     const { width, height } = canvas;
-
+  
     // Draw base video frame
     ctx.save();
     ctx.clearRect(0, 0, width, height);
     ctx.drawImage(videoRef.current, 0, 0, width, height);
-
+  
     // Update & render tattoo mesh
     if (enablePose && landmarks.elbow && landmarks.wrist) {
       const sx = width, sy = height;
@@ -172,14 +179,14 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
       );
       const mid = elbow.clone().add(wrist).multiplyScalar(0.5);
       const dir = wrist.clone().sub(elbow);
-
+  
       meshRef.current.position.set(
         mid.x + offset.x * width,
         mid.y + offset.y * height,
         offset.z
       );
       meshRef.current.rotation.z = Math.atan2(dir.y, dir.x) + (rotationDeg * Math.PI) / 180;
-
+  
       const planeW = dir.length() * (scaleFactor / 0.15);
       const planeH = (planeW * tattooImg.height) / tattooImg.width;
       meshRef.current.scale.set(planeW, planeH, 1);
@@ -195,26 +202,34 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     } else {
       meshRef.current.visible = false;
     }
-
-    // Render Three.js scene
-    rendererRef.current.render(sceneRef.current, cameraRef.current);
-
-    // Composite tattoo through segmentation mask
+  
+    // --- SEGMENTATION MASK BLENDING FOR REALISTIC TATTOO PLACEMENT ---
+  
+    // Render tattoo to an offscreen buffer, then mask it
     const tmp = document.createElement('canvas');
     tmp.width = width;
     tmp.height = height;
     const tctx = tmp.getContext('2d');
-    
+  
+    // Draw tattoo from Three.js output
     tctx.drawImage(threeCanvasRef.current, 0, 0);
+  
+    // Mask tattoo using segmentation mask ("destination-in": keep only where mask is present)
     tctx.globalCompositeOperation = 'destination-in';
     tctx.drawImage(res.segmentationMask, 0, 0, width, height);
-
+  
+    // Draw the masked tattoo onto the main canvas with blend mode and opacity
     ctx.globalCompositeOperation = blendMode;
     ctx.globalAlpha = opacity;
     ctx.drawImage(tmp, 0, 0);
-
+  
+    // OPTIONAL: Draw background over areas that are NOT person (to put tattoo "under" the person)
+    ctx.globalAlpha = 1.0;
+    ctx.globalCompositeOperation = 'destination-over';
+    ctx.drawImage(videoRef.current, 0, 0, width, height);
+  
     ctx.restore();
-
+  
     // Schedule next frame
     frameIdRef.current = requestAnimationFrame(loop);
   }, [
@@ -228,6 +243,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     scaleFactor,
     loop
   ]);
+  
 
   // Initialize models
   const initModels = useCallback(async () => {
