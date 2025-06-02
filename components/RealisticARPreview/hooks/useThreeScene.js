@@ -141,7 +141,7 @@ export const useThreeScene = (imageUrl) => {
 
   return {
     scene: sceneRef.current,
-    camera: cameraRef.current,
+    camera: cameraRef.current,  // Add this line
     renderer: rendererRef.current,
     mesh: meshRef.current,
     threeCanvas: threeCanvasRef.current,

@@ -25,12 +25,12 @@ export const useMediaPipe = ({ onPoseResults, onSegmentationResults }) => {
       poseRef.current = poseInstance;
       segRef.current = segmentationInstance;
       
-      // Re-attach callbacks
-      poseInstance.onResults(onPoseResults);
-      segmentationInstance.onResults(onSegmentationResults);
-      
-      setModelsReady(true);
-      return;
+      if (onPoseResults) {
+        poseInstance.onResults(onPoseResults);
+      }
+      if (onSegmentationResults) {
+        segmentationInstance.onResults(onSegmentationResults);
+      }
     }
 
     isInitializing = true;
@@ -104,22 +104,40 @@ export const useMediaPipe = ({ onPoseResults, onSegmentationResults }) => {
 
   const sendFrame = useCallback(async (videoElement) => {
     if (!segRef.current || !poseRef.current) {
-      console.warn('⚠️ Models not ready for sendFrame');
+      console.warn('⚠️ Models not ready for sendFrame', {
+        seg: !!segRef.current,
+        pose: !!poseRef.current
+      });
+      return;
+    }
+
+    if (!videoElement || videoElement.readyState < 2) {
+      console.warn('⚠️ Video not ready', videoElement?.readyState);
       return;
     }
   
     try {
       // Log frame sending
-      console.log('📤 Sending frame to models');
+      console.log('📤 Sending frame to models', {
+        videoWidth: videoElement.videoWidth,
+        videoHeight: videoElement.videoHeight,
+        readyState: videoElement.readyState
+      });
       
-      // Send to segmentation first
-      if (segRef.current.send) {
+      // Send to segmentation
+      if (segRef.current && segRef.current.send) {
+        console.log('   → Sending to segmentation...');
         await segRef.current.send({ image: videoElement });
+      } else {
+        console.warn('   ⚠️ Segmentation send method not available');
       }
       
-      // Then to pose
-      if (poseRef.current.send) {
+      // Send to pose
+      if (poseRef.current && poseRef.current.send) {
+        console.log('   → Sending to pose...');
         await poseRef.current.send({ image: videoElement });
+      } else {
+        console.warn('   ⚠️ Pose send method not available');
       }
     } catch (error) {
       console.error('❌ Error sending frame:', error);
