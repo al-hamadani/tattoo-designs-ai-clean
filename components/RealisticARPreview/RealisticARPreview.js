@@ -13,7 +13,8 @@ import { calculateTattooTransform }  from './utils/bodyPartDetection';
 import { compositeWithSegmentation } from './utils/imageProcessing';
 import { DEFAULTS }                  from './utils/constants';
 
-import { Move, Loader2 } from 'lucide-react';
+import { Move, Loader2, Sliders } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function RealisticARPreview({ imageUrl, design, onClose }) {
   if (typeof window === 'undefined') {
@@ -35,16 +36,17 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
   const [debug,     setDebug]       = useState({ fps: 0, last: 0, frames: 0, callbacks: 0 });
 
   const [settings, setSettings] = useState({
-    scaleFactor : DEFAULTS.SCALE_FACTOR,
-    offset      : { x: 0, y: 0, z: 0.01 },
-    rotationDeg : 0,
-    opacity     : DEFAULTS.OPACITY,
-    blendMode   : DEFAULTS.BLEND_MODE,
-    enablePose  : false,
-    bodyPart    : 'manual',
-    facing      : 'user'
+    scaleFactor: DEFAULTS.SCALE_FACTOR,
+    offset: { x: 0, y: 0, z: 0.01 },
+    rotationDeg: 0,
+    opacity: DEFAULTS.OPACITY,
+    blendMode: DEFAULTS.BLEND_MODE,
+    enablePose: true,  // ← Changed to true
+    bodyPart: 'auto',  // ← Changed to 'auto'
+    facing: 'user'
   });
-
+  
+  const [controlsAlwaysVisible, setControlsAlwaysVisible] = useState(true);
   const [dragging,      setDragging]      = useState(false);
   const [dragStart,     setDragStart]     = useState({ x: 0, y: 0 });
   const [initOffset,    setInitOffset]    = useState({ x: 0, y: 0 });
@@ -60,18 +62,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     initThree, updateMesh, cleanup: cleanupThree
   } = useThreeScene(imageUrl);
 
-  // Three.js debug effect
-  useEffect(() => {
-    console.log('🔍 Three.js objects status:', {
-      scene: !!scene,
-      camera: !!camera,
-      renderer: !!renderer,
-      mesh: !!mesh,
-      threeCanvas: !!threeCanvas
-    });
-  }, [scene, camera, renderer, mesh, threeCanvas]);
-
-  // MediaPipe (with setModelsReady included in destructuring)
+  // MediaPipe
   const {
     poseRef, segRef, initModels, sendFrame, modelsReady, setModelsReady
   } = useMediaPipe({
@@ -85,12 +76,34 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     }
   });
 
+  // Debug effect for Three.js status
+  useEffect(() => {
+    console.log('🔍 Three.js objects status:', {
+      scene: !!scene,
+      camera: !!camera,
+      renderer: !!renderer,
+      mesh: !!mesh,
+      threeCanvas: !!threeCanvas
+    });
+  }, [scene, camera, renderer, mesh, threeCanvas]);
+
+  // UI state debug effect
+  useEffect(() => {
+    console.log('🎮 UI State:', {
+      showControls,
+      showAdvanced,
+      enablePose: settings.enablePose,
+      bodyPart: settings.bodyPart,
+      isLoading
+    });
+  }, [showControls, showAdvanced, settings.enablePose, settings.bodyPart, isLoading]);
+
   // Keep modelsReadyRef in sync
   useEffect(() => {
     modelsReadyRef.current = modelsReady;
   }, [modelsReady]);
 
-  // Add the body part change handler
+  // Body part change handler
   const handleBodyPartChange = useCallback((bodyPart) => {
     setSettings(prev => ({ ...prev, bodyPart }));
     // Reset offset when changing body parts for better initial placement
@@ -103,7 +116,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     }
   }, []);
 
-  // SAFER, DEBUGGING processSegmentation
+  // Cleaned processSegmentation: NO red box, NO frame text, NO green rectangle
   const processSegmentation = useCallback((results) => {
     frameCountRef.current++;
     lastCallbackRef.current = Date.now();
@@ -121,13 +134,6 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     ctx.clearRect(0, 0, width, height);
     ctx.drawImage(videoRef.current, 0, 0, width, height);
 
-    // Debug info on canvas
-    ctx.fillStyle = 'red';
-    ctx.fillRect(10, 10, 50, 50);
-    ctx.fillStyle = 'white';
-    ctx.font = '16px Arial';
-    ctx.fillText(`Frame: ${frameCountRef.current}`, 10, 80);
-
     // Only try Three.js rendering if all components are ready
     if (mesh && renderer && camera && scene && threeCanvas) {
       try {
@@ -140,79 +146,22 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
           design
         });
 
-        // Log transform details every 60 frames
-        if (frameCountRef.current % 60 === 0) {
-          console.log('🎯 Transform:', {
-            visible: transform.visible,
-            position: transform.position,
-            scale: transform.scale,
-            rotation: transform.rotation
-          });
-        }
-
         if (transform.visible) {
           updateMesh(transform);
 
-          // Clear Three.js canvas (for transparent BG)
           if (renderer.setClearColor) renderer.setClearColor(0x000000, 0);
           if (renderer.clear) renderer.clear();
 
-          // Render Three.js scene
           renderer.render(scene, camera);
 
-          // Draw Three.js canvas to main canvas
           ctx.save();
           ctx.globalAlpha = settings.opacity;
           ctx.globalCompositeOperation = settings.blendMode;
-
-          // Check if Three.js canvas has content
-          let hasContent = false;
-          try {
-            const threeCtx = threeCanvas.getContext && threeCanvas.getContext('2d');
-            if (threeCtx && threeCtx.getImageData) {
-              const imageData = threeCtx.getImageData(0, 0, 1, 1);
-              hasContent = imageData.data.some(pixel => pixel > 0);
-            }
-          } catch (e) {
-            // In case threeCanvas is a WebGL canvas and getContext('2d') fails, just skip this debug
-          }
-
-          if (frameCountRef.current % 60 === 0) {
-            console.log('🖼️ Three.js canvas:', {
-              width: threeCanvas.width,
-              height: threeCanvas.height,
-              hasContent,
-              meshVisible: mesh.visible,
-              meshScale: mesh.scale,
-              meshPosition: mesh.position
-            });
-          }
-
           ctx.drawImage(threeCanvas, 0, 0, width, height);
           ctx.restore();
-
-          // Debug: Draw tattoo position indicator
-          ctx.strokeStyle = 'lime';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(
-            transform.position.x + width / 2 - transform.scale.x / 2,
-            transform.position.y + height / 2 - transform.scale.y / 2,
-            transform.scale.x,
-            transform.scale.y
-          );
         }
       } catch (err) {
         console.error('❌ Render error:', err);
-      }
-    } else {
-      if (frameCountRef.current === 1) {
-        console.log('⏳ Three.js not ready:', {
-          mesh: !!mesh,
-          renderer: !!renderer,
-          camera: !!camera,
-          scene: !!scene,
-          threeCanvas: !!threeCanvas
-        });
       }
     }
 
@@ -229,7 +178,6 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     processingRef.current = false;
   }, [mesh, renderer, camera, scene, landmarks, detectedParts, settings, debug.last, design, updateMesh, threeCanvas]);
 
-  // Always update ref
   useEffect(() => {
     processSegmentationRef.current = processSegmentation;
   }, [processSegmentation]);
@@ -257,15 +205,12 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     if (!processingRef.current && modelsReadyRef.current) {
       processingRef.current = true;
       try {
-       // console.log('🔄 Frame', frameCountRef.current, 'sending...');
         await sendFrame(videoRef.current);
       } catch (err) {
-       // console.error('sendFrame error:', err);
+        console.error('sendFrame error:', err);
       } finally {
         processingRef.current = false;
       }
-    } else if (!modelsReadyRef.current) {
-     // console.log('⏳ Waiting for models...', { ready: modelsReadyRef.current });
     }
 
     frameIdRef.current = requestAnimationFrame(loop);
@@ -289,7 +234,6 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
         await initModels();
         if (!mounted) return;
 
-        // Verify models are initialized
         console.log('Model check:', {
           hasPose: !!poseRef.current,
           hasSegmentation: !!segRef.current,
@@ -314,11 +258,17 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
       }
     };
 
+    let controlsTimer;
+    if (!controlsAlwaysVisible) {
+      controlsTimer = setTimeout(() => setShowControls(false), 10000);
+    }
+
     const timer = setTimeout(initialize, 100);
 
     return () => {
       mounted = false;
       clearTimeout(timer);
+      if (controlsTimer) clearTimeout(controlsTimer);
       stopCamera();
       cleanupThree();
       if (frameIdRef.current) {
@@ -326,7 +276,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
         frameIdRef.current = null;
       }
     };
-  }, []);
+  }, [controlsAlwaysVisible, initModels, stopCamera, cleanupThree, loop, startCamera, poseRef, segRef, modelsReady, initThree]);
 
   // Drag handlers
   const handleDragStart = (e) => {
@@ -406,8 +356,39 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
         onTouchStart={handleDragStart}
         onTouchMove={handleDragMove}
         onTouchEnd={handleDragEnd}
-        onClick={() => !dragging && setShowControls((v) => !v)}
+        // ← always show controls on click and log
+        onClick={() => {
+          if (!dragging) {
+            setShowControls(true);
+            console.log('Canvas clicked, showing controls');
+          }
+        }}
       />
+
+      {/* Always visible hint when controls are hidden */}
+      {!showControls && !isLoading && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-md text-white px-6 py-3 rounded-full text-sm font-medium shadow-lg z-30"
+        >
+          <div className="flex items-center gap-2">
+            <Move className="w-4 h-4" />
+            Tap anywhere to show controls
+          </div>
+        </motion.div>
+      )}
+      
+      {/* Controls visibility toggle button (always visible) */}
+      <button
+        onClick={() => setShowControls(!showControls)}
+        className={`fixed top-4 right-4 p-3 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-black/80 transition-all z-30 ${
+          showControls ? 'opacity-50' : 'opacity-100'
+        }`}
+        title="Toggle controls"
+      >
+        <Sliders className="w-6 h-6" />
+      </button>
 
       <ARControls
         show={showControls}
@@ -426,10 +407,13 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
         onClose={onClose}
         onReset={() =>
           setSettings({
-            ...DEFAULTS,
+            scaleFactor: DEFAULTS.SCALE_FACTOR,
             offset: DEFAULTS.OFFSET,
             rotationDeg: DEFAULTS.ROTATION,
-            enablePose: false,
+            opacity: DEFAULTS.OPACITY,
+            blendMode: DEFAULTS.BLEND_MODE,
+            enablePose: true,
+            bodyPart: 'auto',
             facing: settings.facing
           })
         }

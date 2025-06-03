@@ -201,18 +201,39 @@ export const useThreeScene = (imageUrl) => {
     }
   }, []);
 
-  const cleanup = useCallback(() => {
-    console.log('🧹 Cleaning up Three.js scene...');
-    setIsMeshReady(false);
-    // ...rest of cleanup logic...
-    if (rendererRef.current) { /* ... */ }
-    if (textureRef.current) { /* ... */ }
-    if (meshRef.current) { /* ... */ }
-    if (sceneRef.current) { /* ... */ }
-    cameraRef.current = null;
-    threeCanvasRef.current = null;
-    console.log('🧹 Three.js scene cleanup complete.');
-  }, []);
+ // In useThreeScene hook, update the cleanup function:
+const cleanup = useCallback(() => {
+  console.log('🧹 Cleaning up Three.js scene...');
+  setIsMeshReady(false);
+  
+  if (rendererRef.current) {
+    rendererRef.current.forceContextLoss();
+    rendererRef.current.dispose();
+    rendererRef.current = null;
+  }
+  
+  if (textureRef.current) {
+    textureRef.current.dispose();
+    textureRef.current = null;
+  }
+  
+  if (meshRef.current) {
+    meshRef.current.geometry.dispose();
+    meshRef.current.material.dispose();
+    meshRef.current = null;
+  }
+  
+  if (sceneRef.current) {
+    sceneRef.current.clear();
+    sceneRef.current = null;
+  }
+  
+  cameraRef.current = null;
+  threeCanvasRef.current = null;
+  
+  webglContextManager.unregisterContext();
+  console.log('🧹 Three.js scene cleanup complete.');
+}, []);
 
   useEffect(() => {
     return () => { cleanup(); };

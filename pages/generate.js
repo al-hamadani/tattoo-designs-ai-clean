@@ -707,13 +707,15 @@ export default function Generate() {
           </AnimatePresence>
           {/* Fixed AR Preview Modal */}
           <AnimatePresence>
-            {showAR && selectedDesign && (
-              <RealisticARPreview
-                imageUrl={selectedDesign.url}
-                design={selectedDesign}
-                onClose={() => setShowAR(false)}
-              />
-            )}
+          {selectedDesign && (
+  <div className={showAR ? '' : 'hidden'}>
+    <RealisticARPreview
+      imageUrl={selectedDesign.url}
+      design={selectedDesign}
+      onClose={() => setShowAR(false)}
+    />
+  </div>
+)}
           </AnimatePresence>
         </div>
       </main>
