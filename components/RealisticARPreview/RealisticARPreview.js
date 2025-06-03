@@ -120,20 +120,19 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
   const processSegmentation = useCallback((results) => {
     frameCountRef.current++;
     lastCallbackRef.current = Date.now();
-
+  
     if (!canvasRef.current || !videoRef.current) {
-      console.log('⚠️ Missing canvas or video');
       processingRef.current = false;
       return;
     }
-
+  
     const ctx = canvasRef.current.getContext('2d');
     const { width, height } = canvasRef.current;
-
+  
     // Draw base video frame
     ctx.clearRect(0, 0, width, height);
     ctx.drawImage(videoRef.current, 0, 0, width, height);
-
+  
     // Only try Three.js rendering if all components are ready
     if (mesh && renderer && camera && scene && threeCanvas) {
       try {
@@ -145,15 +144,15 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
           settings,
           design
         });
-
+  
         if (transform.visible) {
           updateMesh(transform);
-
+  
           if (renderer.setClearColor) renderer.setClearColor(0x000000, 0);
           if (renderer.clear) renderer.clear();
-
+  
           renderer.render(scene, camera);
-
+  
           ctx.save();
           ctx.globalAlpha = settings.opacity;
           ctx.globalCompositeOperation = settings.blendMode;
@@ -164,20 +163,9 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
         console.error('❌ Render error:', err);
       }
     }
-
-    // Update FPS
-    const now = performance.now();
-    const fps = Math.round(1000 / (now - (debug.last || now)));
-    setDebug({
-      fps,
-      last: now,
-      frames: frameCountRef.current,
-      callbacks: frameCountRef.current
-    });
-
+  
     processingRef.current = false;
-  }, [mesh, renderer, camera, scene, landmarks, detectedParts, settings, debug.last, design, updateMesh, threeCanvas]);
-
+  }, [mesh, renderer, camera, scene, landmarks, detectedParts, settings, design, updateMesh, threeCanvas]);
   useEffect(() => {
     processSegmentationRef.current = processSegmentation;
   }, [processSegmentation]);
@@ -217,67 +205,82 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
   }, [sendFrame]);
 
   // AR Boot
-  useEffect(() => {
-    let mounted = true;
-    let initialized = false;
+  // Add this ref at the top with other refs:
+const initializingRef = useRef(false);
+const initializedRef = useRef(false);
 
-    const initialize = async () => {
-      if (initialized) return;
-      initialized = true;
+// Update the AR Boot useEffect:
+useEffect(() => {
+  let mounted = true;
 
-      try {
-        console.log('🚀 Starting AR initialization...');
-        const { width, height } = await startCamera();
-        if (!mounted) return;
-
-        setLoadingMsg('Loading AI models…');
-        await initModels();
-        if (!mounted) return;
-
-        console.log('Model check:', {
-          hasPose: !!poseRef.current,
-          hasSegmentation: !!segRef.current,
-          modelsReady
-        });
-
-        initThree(width, height);
-
-        if (canvasRef.current) {
-          canvasRef.current.width = width;
-          canvasRef.current.height = height;
-        }
-
-        setIsLoading(false);
-        console.log('🚀 Starting animation loop');
-        loop();
-      } catch (e) {
-        console.error('Boot error:', e);
-        if (mounted) {
-          setError(e.message || 'Failed to initialize AR');
-        }
-      }
-    };
-
-    let controlsTimer;
-    if (!controlsAlwaysVisible) {
-      controlsTimer = setTimeout(() => setShowControls(false), 10000);
+  const initialize = async () => {
+    // Prevent multiple initializations
+    if (initializingRef.current || initializedRef.current) {
+      console.log('⏳ Already initialized or initializing');
+      return;
     }
+    
+    initializingRef.current = true;
 
-    const timer = setTimeout(initialize, 100);
+    try {
+      console.log('🚀 Starting AR initialization...');
+      
+      // Wait a bit for component to stabilize
+      await new Promise(resolve => setTimeout(resolve, 500));
+      if (!mounted) return;
+      
+      const { width, height } = await startCamera();
+      if (!mounted) return;
 
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-      if (controlsTimer) clearTimeout(controlsTimer);
+      setLoadingMsg('Loading AI models…');
+      await initModels();
+      if (!mounted) return;
+
+      initThree(width, height);
+
+      if (canvasRef.current) {
+        canvasRef.current.width = width;
+        canvasRef.current.height = height;
+      }
+
+      setIsLoading(false);
+      initializedRef.current = true;
+      console.log('🚀 Starting animation loop');
+      loop();
+    } catch (e) {
+      console.error('Boot error:', e);
+      if (mounted) {
+        setError(e.message || 'Failed to initialize AR');
+      }
+    } finally {
+      initializingRef.current = false;
+    }
+  };
+
+  // Only auto-hide if controlsAlwaysVisible is false
+  let controlsTimer;
+  if (!controlsAlwaysVisible) {
+    controlsTimer = setTimeout(() => setShowControls(false), 10000);
+  }
+
+  const timer = setTimeout(initialize, 100);
+
+  return () => {
+    mounted = false;
+    clearTimeout(timer);
+    if (controlsTimer) clearTimeout(controlsTimer);
+    
+    // Only cleanup if we actually initialized
+    if (initializedRef.current) {
       stopCamera();
       cleanupThree();
       if (frameIdRef.current) {
         cancelAnimationFrame(frameIdRef.current);
         frameIdRef.current = null;
       }
-    };
-  }, [controlsAlwaysVisible, initModels, stopCamera, cleanupThree, loop, startCamera, poseRef, segRef, modelsReady, initThree]);
-
+    }
+  };
+}, []); // Remove all dependencies to run only once
   // Drag handlers
   const handleDragStart = (e) => {
     e.preventDefault();

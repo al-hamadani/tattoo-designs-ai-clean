@@ -17,8 +17,13 @@ export const useCamera = (videoRef, facingMode) => {
   const startCamera = useCallback(async () => {
     stopCamera();
     console.log("📸 Starting camera...");
-
+  
     try {
+      // Ensure video element exists
+      if (!videoRef.current) {
+        throw new Error("Video element not ready");
+      }
+  
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: 1280 },
@@ -26,20 +31,32 @@ export const useCamera = (videoRef, facingMode) => {
           facingMode: facingMode,
         },
       });
-
+  
       streamRef.current = stream;
       
+      // Double-check video element still exists
       if (!videoRef.current) {
+        stream.getTracks().forEach(track => track.stop());
         throw new Error("Video element not ready");
       }
-
+  
       videoRef.current.srcObject = stream;
-
+  
+      // Wait for video to be ready
       await new Promise((resolve, reject) => {
-        videoRef.current.onloadedmetadata = resolve;
-        videoRef.current.onerror = reject;
+        const timeout = setTimeout(() => reject(new Error("Video load timeout")), 5000);
+        
+        videoRef.current.onloadedmetadata = () => {
+          clearTimeout(timeout);
+          resolve();
+        };
+        
+        videoRef.current.onerror = (e) => {
+          clearTimeout(timeout);
+          reject(e);
+        };
       });
-
+  
       await videoRef.current.play();
       
       console.log("✅ Camera started successfully");
