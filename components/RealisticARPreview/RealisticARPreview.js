@@ -29,6 +29,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
   const lastCallbackRef = useRef(0);
   const processSegmentationRef = useRef();
   const modelsReadyRef = useRef(false);
+  const tattooVisibleRef = useRef(true);
 
   const [isLoading, setIsLoading]   = useState(true);
   const [loadingMsg, setLoadingMsg] = useState('Initializing AR…');
@@ -143,7 +144,26 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
           design
         });
 
+
         if (transform.visible) {
+
+        // Always show tattoo in manual mode
+        if (settings.bodyPart === 'manual' || transform.visible) {
+          if (settings.bodyPart === 'manual') {
+            transform.visible = true;
+            transform.position = {
+              x: settings.offset.x * width,
+              y: settings.offset.y * height,
+              z: settings.offset.z
+            };
+            transform.rotation = (settings.rotationDeg * Math.PI) / 180;
+            transform.scale = {
+              x: width * settings.scaleFactor * 0.5,
+              y: width * settings.scaleFactor * 0.5,
+              z: 1
+            };
+          }
+
           updateMesh(transform);
 
           if (renderer.setClearColor) renderer.setClearColor(0x000000, 0);

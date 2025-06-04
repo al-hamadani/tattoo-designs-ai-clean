@@ -74,6 +74,7 @@ export const ARControls = ({
               title="Switch camera"
             >
               <SwitchCamera className="w-5 h-5" />
+
             </button>
 
             {!showAdvanced && (
@@ -85,6 +86,17 @@ export const ARControls = ({
                 <Sliders className="w-5 h-5" />
               </button>
             )}
+
+            </button>
+
+            <button
+              onClick={onShowAdvanced}
+              className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all"
+              title="Settings"
+            >
+              <Sliders className="w-5 h-5" />
+            </button>
+
 
             {/* Close button - make it more prominent */}
             <button
