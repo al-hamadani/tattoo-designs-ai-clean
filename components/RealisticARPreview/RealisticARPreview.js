@@ -29,6 +29,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
   const lastCallbackRef = useRef(0);
   const processSegmentationRef = useRef();
   const modelsReadyRef = useRef(false);
+  const tattooVisibleRef = useRef(true);
 
   const [isLoading, setIsLoading]   = useState(true);
   const [loadingMsg, setLoadingMsg] = useState('Initializing AR…');
@@ -105,15 +106,13 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
 
   // Body part change handler
   const handleBodyPartChange = useCallback((bodyPart) => {
-    setSettings(prev => ({ ...prev, bodyPart }));
-    // Reset offset when changing body parts for better initial placement
-    if (bodyPart !== 'manual') {
-      setSettings(prev => ({
-        ...prev,
-        bodyPart,
+    setSettings(prev => ({ 
+      ...prev, 
+      bodyPart,
+      ...(bodyPart !== 'manual' && {
         offset: { x: 0, y: 0, z: 0.01 }
-      }));
-    }
+      })
+    }));
   }, []);
 
   // Cleaned processSegmentation: NO red box, NO frame text, NO green rectangle
@@ -144,15 +143,31 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
           settings,
           design
         });
-  
-        if (transform.visible) {
+
+        // Always show tattoo in manual mode
+        if (settings.bodyPart === 'manual' || transform.visible) {
+          if (settings.bodyPart === 'manual') {
+            transform.visible = true;
+            transform.position = {
+              x: settings.offset.x * width,
+              y: settings.offset.y * height,
+              z: settings.offset.z
+            };
+            transform.rotation = (settings.rotationDeg * Math.PI) / 180;
+            transform.scale = {
+              x: width * settings.scaleFactor * 0.5,
+              y: width * settings.scaleFactor * 0.5,
+              z: 1
+            };
+          }
+
           updateMesh(transform);
-  
+
           if (renderer.setClearColor) renderer.setClearColor(0x000000, 0);
           if (renderer.clear) renderer.clear();
-  
+
           renderer.render(scene, camera);
-  
+
           ctx.save();
           ctx.globalAlpha = settings.opacity;
           ctx.globalCompositeOperation = settings.blendMode;
@@ -329,7 +344,7 @@ useEffect(() => {
 
   return (
     <div
-      className="fixed inset-0 bg-black select-none overflow-hidden z-40"
+      className="fixed inset-0 bg-black select-none overflow-hidden z-50 safe-area-inset"
       onTouchMove={(e) => dragging && e.preventDefault()}
     >
       <DebugInfo
