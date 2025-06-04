@@ -55,47 +55,47 @@ export const ARControls = ({
           </div>
 
           {/* Right side - Control buttons */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={onTogglePose}
-              className={`p-2 rounded-full text-white transition-all backdrop-blur-md ${
-                settings.enablePose
-                  ? 'bg-green-500 hover:bg-green-600'
-                  : 'bg-white/10 hover:bg-white/20'
-              }`}
-              title={settings.enablePose ? 'Disable tracking' : 'Enable tracking'}
-            >
-              <User className="w-5 h-5" />
-            </button>
+<div className="flex items-center gap-1">
+  <button
+    onClick={onTogglePose}
+    className={`p-2 rounded-full text-white transition-all backdrop-blur-md ${
+      settings.enablePose
+        ? 'bg-green-500 hover:bg-green-600'
+        : 'bg-white/10 hover:bg-white/20'
+    }`}
+    title={settings.enablePose ? 'Disable tracking' : 'Enable tracking'}
+  >
+    <User className="w-5 h-5" />
+  </button>
 
-            <button
-              onClick={onSwitchCamera}
-              className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all"
-              title="Switch camera"
-            >
-              <SwitchCamera className="w-5 h-5" />
-            </button>
+  <button
+    onClick={onSwitchCamera}
+    className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all"
+    title="Switch camera"
+  >
+    <SwitchCamera className="w-5 h-5" />
+  </button>
 
-            {!showAdvanced && (
-              <button
-                onClick={onShowAdvanced}
-                className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all"
-                title="Settings"
-              >
-                <Sliders className="w-5 h-5" />
-              </button>
-            )}
+  {/* Settings button (conditionally shown) */}
+  {!showAdvanced && (
+    <button
+      onClick={onShowAdvanced}
+      className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all"
+      title="Settings"
+    >
+      <Sliders className="w-5 h-5" />
+    </button>
+  )}
 
-            {/* Close button - make it more prominent */}
-            <button
-              onClick={onClose}
-              className="p-2 bg-red-500 backdrop-blur-md rounded-full text-white hover:bg-red-600 transition-all ml-2"
-              title="Close"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
+  {/* Close button - make it more prominent */}
+  <button
+    onClick={onClose}
+    className="p-2 bg-red-500 backdrop-blur-md rounded-full text-white hover:bg-red-600 transition-all ml-2"
+    title="Close"
+  >
+    <X className="w-5 h-5" />
+  </button>
+</div>
 
         {/* Mobile tracking status */}
         {settings.enablePose && (
