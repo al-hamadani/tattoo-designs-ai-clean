@@ -35,75 +35,76 @@ export const ARControls = ({
       <div className={`fixed top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent p-3 sm:p-4 transition-all duration-300 z-20 ${
         show ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
       }`}>
-        <div className="flex items-center justify-between max-w-screen-lg mx-auto">
-          <div className="flex items-center gap-3 flex-1">
-            <h3 className="text-white font-semibold text-base sm:text-lg hidden sm:block">AR Preview</h3>
-            
-            {/* Always show body part selector */}
+        <div className="flex items-center justify-between">
+          {/* Left side - Body part selector */}
+          <div className="flex items-center gap-2 flex-1">
             <BodyPartSelector
               currentBodyPart={settings.bodyPart}
               onBodyPartChange={onBodyPartChange}
               detectedParts={detectedParts}
-              isExpanded={true}
+              isExpanded={false}
               onToggleExpanded={() => {}}
             />
-            
-            {/* Show tracking status */}
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs transition-all ${
-              settings.enablePose 
-                ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
-                : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
-            }`}>
-              <div className={`w-2 h-2 rounded-full ${
-                settings.enablePose ? 'bg-green-400 animate-pulse' : 'bg-gray-400'
-              }`} />
-              {settings.enablePose ? `Tracking (${getDetectedPartsInfo()} parts)` : 'Manual Mode'}
-            </div>
+
+            {/* Tracking status - make it smaller on mobile */}
+            {settings.enablePose && (
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                Tracking ({getDetectedPartsInfo()} parts)
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-2">
+          {/* Right side - Control buttons */}
+          <div className="flex items-center gap-1">
             <button
               onClick={onTogglePose}
-              className={`relative p-2 rounded-full text-white transition-all backdrop-blur-md ${
-                settings.enablePose 
-                  ? 'bg-green-500 hover:bg-green-600 shadow-lg shadow-green-500/30' 
+              className={`p-2 rounded-full text-white transition-all backdrop-blur-md ${
+                settings.enablePose
+                  ? 'bg-green-500 hover:bg-green-600'
                   : 'bg-white/10 hover:bg-white/20'
               }`}
-              title={settings.enablePose ? "Disable Body Tracking" : "Enable Body Tracking"}
+              title={settings.enablePose ? 'Disable tracking' : 'Enable tracking'}
             >
-              <User className="w-5 h-5 sm:w-6 sm:h-6" />
-              {settings.enablePose && (
-                <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-ping" />
-              )}
+              <User className="w-5 h-5" />
             </button>
-            
+
             <button
               onClick={onSwitchCamera}
               className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all"
               title="Switch camera"
             >
-              <SwitchCamera className="w-5 h-5 sm:w-6 sm:h-6" />
+              <SwitchCamera className="w-5 h-5" />
             </button>
-            
+
             <button
               onClick={onShowAdvanced}
-              className={`p-2 backdrop-blur-md rounded-full text-white transition-all ${
-                settings.showAdvanced ? 'bg-blue-500 hover:bg-blue-600' : 'bg-white/10 hover:bg-white/20'
-              }`}
-              title="Advanced settings"
+              className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all"
+              title="Settings"
             >
-              <Sliders className="w-5 h-5 sm:w-6 sm:h-6" />
+              <Sliders className="w-5 h-5" />
             </button>
-            
+
+            {/* Close button - make it more prominent */}
             <button
               onClick={onClose}
-              className="p-2 bg-red-500/20 backdrop-blur-md rounded-full text-white hover:bg-red-500/40 transition-all"
-              title="Close AR"
+              className="p-2 bg-red-500 backdrop-blur-md rounded-full text-white hover:bg-red-600 transition-all ml-2"
+              title="Close"
             >
-              <X className="w-5 h-5 sm:w-6 sm:h-6" />
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
+
+        {/* Mobile tracking status */}
+        {settings.enablePose && (
+          <div className="sm:hidden mt-2 flex justify-center">
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full text-xs bg-green-500/20 text-green-400 border border-green-500/30">
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+              Tracking ({getDetectedPartsInfo()} parts)
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom controls */}
