@@ -1,6 +1,7 @@
 import '../styles/globals.css'
 import Head from 'next/head'
 import GoogleAnalytics from '../components/GoogleAnalytics'
+import { Analytics } from '@vercel/analytics/next'
 import { useEffect } from 'react'
 import { useRouter } from 'next/router'
 import NProgress from 'nprogress'
@@ -90,6 +91,7 @@ export default function App({ Component, pageProps }) {
       </Head>
       <GoogleAnalytics />
       <Component {...pageProps} />
+      <Analytics />
     </>
   )
 }
