@@ -8,9 +8,10 @@ const RealisticARPreview = dynamic(
 );
 
 export default function ARPage() {
-  const { query } = useRouter();
-  const { image } = query;           // passed as .../ar?image=<url>
+  const router = useRouter();
+  const { image } = router.query; // passed as .../ar?image=<url>
+
   return image ? (
-    <RealisticARPreview imageUrl={image} onClose={() => history.back()} />
+    <RealisticARPreview imageUrl={image} onClose={() => router.back()} />
   ) : null;
 }
