@@ -70,29 +70,56 @@ export const calculateTattooTransform = ({
 
 // Auto-detect best placement
 const autoDetectTransform = ({ detectedParts, landmarks, dimensions, settings, design }) => {
-  // Priority order for auto-detection
-  if (detectedParts.rightArm.visible && detectedParts.rightArm.section === 'full') {
+  // Prefer arms if fully visible
+  if (detectedParts.rightArm.visible) {
+    if (detectedParts.rightArm.section === 'full') {
+      return getArmTransform('right', landmarks, detectedParts, dimensions, settings, design);
+    }
+    if (detectedParts.rightArm.section === 'lower') {
+      return getForearmTransform('right', landmarks, dimensions, settings, design);
+    }
     return getArmTransform('right', landmarks, detectedParts, dimensions, settings, design);
   }
-  if (detectedParts.leftArm.visible && detectedParts.leftArm.section === 'full') {
+  if (detectedParts.leftArm.visible) {
+    if (detectedParts.leftArm.section === 'full') {
+      return getArmTransform('left', landmarks, detectedParts, dimensions, settings, design);
+    }
+    if (detectedParts.leftArm.section === 'lower') {
+      return getForearmTransform('left', landmarks, dimensions, settings, design);
+    }
     return getArmTransform('left', landmarks, detectedParts, dimensions, settings, design);
   }
+
+  // Chest/front or back
   if (detectedParts.chest.visible && detectedParts.chest.orientation === 'front') {
     return getChestTransform(landmarks, detectedParts, dimensions, settings, design);
   }
   if (detectedParts.back.visible) {
     return getBackTransform(landmarks, detectedParts, dimensions, settings, design);
   }
+
+  // Legs
   if (detectedParts.rightLeg.visible) {
+    if (detectedParts.rightLeg.section === 'lower') {
+      return getCalfTransform('right', landmarks, dimensions, settings, design);
+    }
     return getLegTransform('right', landmarks, detectedParts, dimensions, settings, design);
   }
   if (detectedParts.leftLeg.visible) {
+    if (detectedParts.leftLeg.section === 'lower') {
+      return getCalfTransform('left', landmarks, dimensions, settings, design);
+    }
     return getLegTransform('left', landmarks, detectedParts, dimensions, settings, design);
   }
+
+  // Other parts
   if (detectedParts.neck.visible) {
     return getNeckTransform(landmarks, dimensions, settings, design);
   }
-  
+  if (detectedParts.face.visible) {
+    return getFaceTransform(landmarks, detectedParts, dimensions, settings, design);
+  }
+
   return { visible: false };
 };
 
