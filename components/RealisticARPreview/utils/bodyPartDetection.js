@@ -17,13 +17,13 @@ export const calculateTattooTransform = ({
   const { width, height } = dimensions;
   const { scaleFactor, offset, rotationDeg, enablePose } = settings;
   
-  // Manual mode
+  // Manual mode - always visible
   if (!enablePose || bodyPart === 'manual') {
     return {
-      position: { 
-        x: offset.x * width, 
-        y: offset.y * height, 
-        z: offset.z 
+      position: {
+        x: offset.x * width,
+        y: offset.y * height,
+        z: offset.z
       },
       rotation: (rotationDeg * Math.PI) / 180,
       scale: {

@@ -15,15 +15,21 @@ export const useCamera = (videoRef, facingMode) => {
   }, [videoRef]);
 
   const startCamera = useCallback(async () => {
-    stopCamera();
-    console.log("📸 Starting camera...");
-  
     try {
+      // Check if we have permission first
+      const permission = await navigator.permissions.query({ name: 'camera' });
+      if (permission.state === 'denied') {
+        throw new Error('Camera permission denied. Please enable camera access in your browser settings.');
+      }
+
+      stopCamera();
+      console.log("📸 Starting camera...");
+
       // Ensure video element exists
       if (!videoRef.current) {
         throw new Error("Video element not ready");
       }
-  
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: 1280 },
@@ -69,7 +75,19 @@ export const useCamera = (videoRef, facingMode) => {
     } catch (err) {
       console.error("❌ Camera error:", err);
       stopCamera();
-      throw new Error(`Camera access failed: ${err.message}`);
+
+      let errorMessage = 'Camera access failed';
+      if (err.name === 'NotAllowedError') {
+        errorMessage = 'Camera permission denied. Please allow camera access and reload.';
+      } else if (err.name === 'NotFoundError') {
+        errorMessage = 'No camera found on this device.';
+      } else if (err.name === 'NotReadableError') {
+        errorMessage = 'Camera is already in use by another app.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      throw new Error(errorMessage);
     }
   }, [facingMode, videoRef, stopCamera]);
 
