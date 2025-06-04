@@ -13,7 +13,8 @@ export const ARControls = ({
   onReset,
   onCapture,
   onScaleChange,
-  onBodyPartChange
+  onBodyPartChange,
+  isAdvancedVisible
 }) => {
   // Format detected parts for display
   const getDetectedPartsInfo = () => {
@@ -77,13 +78,15 @@ export const ARControls = ({
               <SwitchCamera className="w-5 h-5" />
             </button>
 
-            <button
-              onClick={onShowAdvanced}
-              className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all"
-              title="Settings"
-            >
-              <Sliders className="w-5 h-5" />
-            </button>
+            {!isAdvancedVisible && (
+              <button
+                onClick={onShowAdvanced}
+                className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white hover:bg-white/20 transition-all"
+                title="Settings"
+              >
+                <Sliders className="w-5 h-5" />
+              </button>
+            )}
 
             {/* Close button - make it more prominent */}
             <button

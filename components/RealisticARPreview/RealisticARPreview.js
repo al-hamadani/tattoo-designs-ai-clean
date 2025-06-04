@@ -296,6 +296,31 @@ useEffect(() => {
     }
   };
 }, []); // Remove all dependencies to run only once
+
+// Restart camera when facing mode changes after initialization
+useEffect(() => {
+  if (!initializedRef.current) return;
+
+  let cancelled = false;
+  const restart = async () => {
+    try {
+      stopCamera();
+      const { width, height } = await startCamera();
+      if (!cancelled && canvasRef.current) {
+        canvasRef.current.width = width;
+        canvasRef.current.height = height;
+      }
+    } catch (e) {
+      console.error('Camera switch error:', e);
+      if (!cancelled) setError(e.message || 'Failed to switch camera');
+    }
+  };
+
+  restart();
+  return () => {
+    cancelled = true;
+  };
+}, [settings.facing]);
   // Drag handlers
   const handleDragStart = (e) => {
     e.preventDefault();
@@ -422,6 +447,7 @@ useEffect(() => {
           }))
         }
         onShowAdvanced={() => setShowAdvanced((v) => !v)}
+        isAdvancedVisible={showAdvanced}
         onClose={onClose}
         onReset={() =>
           setSettings({
