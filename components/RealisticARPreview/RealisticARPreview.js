@@ -27,6 +27,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
   const processingRef = useRef(false);
   const frameCountRef = useRef(0);
   const lastCallbackRef = useRef(0);
+  const callbackCountRef = useRef(0);
   const processSegmentationRef = useRef();
   const modelsReadyRef = useRef(false);
   const tattooVisibleRef = useRef(true);
@@ -119,6 +120,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
   const processSegmentation = useCallback((results) => {
     frameCountRef.current++;
     lastCallbackRef.current = Date.now();
+    callbackCountRef.current++;
   
     if (!canvasRef.current || !videoRef.current) {
       processingRef.current = false;
@@ -184,6 +186,26 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
   useEffect(() => {
     processSegmentationRef.current = processSegmentation;
   }, [processSegmentation]);
+
+  // Update debug stats like FPS and callback count
+  useEffect(() => {
+    let lastFrame = 0;
+    let lastTime = Date.now();
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const frames = frameCountRef.current;
+      const fps = Math.round(((frames - lastFrame) * 1000) / (now - lastTime));
+      lastFrame = frames;
+      lastTime = now;
+      setDebug({
+        fps,
+        last: now,
+        frames,
+        callbacks: callbackCountRef.current
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Animation loop
   const loop = useCallback(async () => {
