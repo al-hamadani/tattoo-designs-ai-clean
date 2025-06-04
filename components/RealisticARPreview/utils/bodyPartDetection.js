@@ -6,10 +6,53 @@ export const smoothVector3 = (current, previous, alpha) => {
   return previous.clone().lerp(current, alpha);
 };
 
+// Calculate coverage of segmentation mask within a bounding box defined by landmarks
+const getMaskCoverage = (mask, points, width, height) => {
+  if (!mask || !points.length) return 1;
+  try {
+    const ctx = mask.getContext('2d');
+    if (!ctx) return 1;
+    const xs = points.map(p => p.x * width);
+    const ys = points.map(p => p.y * height);
+    const minX = Math.max(0, Math.min(...xs));
+    const minY = Math.max(0, Math.min(...ys));
+    const maxX = Math.min(width, Math.max(...xs));
+    const maxY = Math.min(height, Math.max(...ys));
+    const w = Math.max(1, maxX - minX);
+    const h = Math.max(1, maxY - minY);
+    const data = ctx.getImageData(minX, minY, w, h).data;
+    let count = 0;
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] > 128) count++;
+    }
+    return count / (data.length / 4);
+  } catch {
+    return 1;
+  }
+};
+
+// Score a body part based on landmark visibility and segmentation coverage
+const scoreBodyPart = ({ keys, landmarks, mask, width, height }) => {
+  if (!keys.length) return 0;
+  const pts = [];
+  let vis = 0;
+  keys.forEach(k => {
+    const lm = landmarks[k];
+    if (lm) {
+      pts.push(lm);
+      vis += lm.visibility ?? 1;
+    }
+  });
+  const visibilityScore = vis / keys.length;
+  const coverage = getMaskCoverage(mask, pts, width, height);
+  return visibilityScore * coverage;
+};
+
 export const calculateTattooTransform = ({
   bodyPart,
   detectedParts,
   landmarks,
+  segmentationMask,
   dimensions,
   settings,
   design
@@ -37,7 +80,7 @@ export const calculateTattooTransform = ({
 
   // Auto-detect best body part
   if (bodyPart === 'auto') {
-    return autoDetectTransform({ detectedParts, landmarks, dimensions, settings, design });
+    return autoDetectTransform({ detectedParts, landmarks, segmentationMask, dimensions, settings, design });
   }
 
   // Specific body part transforms
@@ -69,58 +112,26 @@ export const calculateTattooTransform = ({
 };
 
 // Auto-detect best placement
-const autoDetectTransform = ({ detectedParts, landmarks, dimensions, settings, design }) => {
-  // Prefer arms if fully visible
-  if (detectedParts.rightArm.visible) {
-    if (detectedParts.rightArm.section === 'full') {
-      return getArmTransform('right', landmarks, detectedParts, dimensions, settings, design);
-    }
-    if (detectedParts.rightArm.section === 'lower') {
-      return getForearmTransform('right', landmarks, dimensions, settings, design);
-    }
-    return getArmTransform('right', landmarks, detectedParts, dimensions, settings, design);
-  }
-  if (detectedParts.leftArm.visible) {
-    if (detectedParts.leftArm.section === 'full') {
-      return getArmTransform('left', landmarks, detectedParts, dimensions, settings, design);
-    }
-    if (detectedParts.leftArm.section === 'lower') {
-      return getForearmTransform('left', landmarks, dimensions, settings, design);
-    }
-    return getArmTransform('left', landmarks, detectedParts, dimensions, settings, design);
-  }
+const autoDetectTransform = ({ detectedParts, landmarks, segmentationMask, dimensions, settings, design }) => {
+  const { width, height } = dimensions;
+  const candidates = [
+    { key: 'rightArm',  landmarks: ['rightShoulder','rightElbow','rightWrist'], transform: () => getArmTransform('right', landmarks, detectedParts, dimensions, settings, design) },
+    { key: 'leftArm',   landmarks: ['leftShoulder','leftElbow','leftWrist'],  transform: () => getArmTransform('left', landmarks, detectedParts, dimensions, settings, design) },
+    { key: 'chest',     landmarks: ['leftShoulder','rightShoulder','leftHip','rightHip'], transform: () => getChestTransform(landmarks, detectedParts, dimensions, settings, design) },
+    { key: 'back',      landmarks: ['leftShoulder','rightShoulder','leftHip','rightHip'], transform: () => getBackTransform(landmarks, detectedParts, dimensions, settings, design) },
+    { key: 'rightLeg',  landmarks: ['rightHip','rightKnee','rightAnkle'], transform: () => getLegTransform('right', landmarks, detectedParts, dimensions, settings, design) },
+    { key: 'leftLeg',   landmarks: ['leftHip','leftKnee','leftAnkle'],  transform: () => getLegTransform('left', landmarks, detectedParts, dimensions, settings, design) },
+    { key: 'neck',      landmarks: ['nose','leftShoulder','rightShoulder'], transform: () => getNeckTransform(landmarks, dimensions, settings, design) },
+    { key: 'face',      landmarks: ['nose','leftEye','rightEye'], transform: () => getFaceTransform(landmarks, detectedParts, dimensions, settings, design) }
+  ];
 
-  // Chest/front or back
-  if (detectedParts.chest.visible && detectedParts.chest.orientation === 'front') {
-    return getChestTransform(landmarks, detectedParts, dimensions, settings, design);
-  }
-  if (detectedParts.back.visible) {
-    return getBackTransform(landmarks, detectedParts, dimensions, settings, design);
-  }
-
-  // Legs
-  if (detectedParts.rightLeg.visible) {
-    if (detectedParts.rightLeg.section === 'lower') {
-      return getCalfTransform('right', landmarks, dimensions, settings, design);
-    }
-    return getLegTransform('right', landmarks, detectedParts, dimensions, settings, design);
-  }
-  if (detectedParts.leftLeg.visible) {
-    if (detectedParts.leftLeg.section === 'lower') {
-      return getCalfTransform('left', landmarks, dimensions, settings, design);
-    }
-    return getLegTransform('left', landmarks, detectedParts, dimensions, settings, design);
-  }
-
-  // Other parts
-  if (detectedParts.neck.visible) {
-    return getNeckTransform(landmarks, dimensions, settings, design);
-  }
-  if (detectedParts.face.visible) {
-    return getFaceTransform(landmarks, detectedParts, dimensions, settings, design);
-  }
-
-  return { visible: false };
+  candidates.forEach(c => {
+    c.score = scoreBodyPart({ keys: c.landmarks, landmarks, mask: segmentationMask, width, height });
+  });
+  candidates.sort((a,b) => b.score - a.score);
+  const best = candidates[0];
+  if (!best || best.score < 0.25) return { visible: false };
+  return best.transform();
 };
 
 // Arm transforms

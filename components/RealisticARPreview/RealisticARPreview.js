@@ -141,6 +141,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
           bodyPart: settings.bodyPart,
           detectedParts,
           landmarks,
+          segmentationMask: results.segmentationMask,
           dimensions: { width, height },
           settings,
           design

@@ -6,6 +6,13 @@ import { smoothVector3 } from '../utils/bodyPartDetection';
 
 const SMOOTHING_ALPHA = 0.4;
 
+// Visibility thresholds per landmark group
+const VISIBILITY_THRESHOLDS = {
+  face: 0.4,
+  hand: 0.5,
+  default: 0.3
+};
+
 export const usePoseDetection = () => {
   const [landmarks, setLandmarks] = useState({
     // Head/Face
@@ -72,9 +79,20 @@ export const usePoseDetection = () => {
     const newDetectedParts = { ...detectedParts };
 
     // Helper to smooth and convert landmarks
+    const getThreshold = (key) => {
+      if (key.includes('Eye') || key.includes('Ear') || key === 'nose') {
+        return VISIBILITY_THRESHOLDS.face;
+      }
+      if (key.includes('Wrist') || key.includes('Index') || key.includes('Pinky') || key.includes('Thumb')) {
+        return VISIBILITY_THRESHOLDS.hand;
+      }
+      return VISIBILITY_THRESHOLDS.default;
+    };
+
     const processLandmark = (key, idx) => {
       const point = lms[idx];
-      if (point && point.visibility > 0.3) {
+      const threshold = getThreshold(key);
+      if (point && point.visibility > threshold) {
         const vec = new THREE.Vector3(point.x, 1 - point.y, point.z);
         return smoothVector3(vec, newLandmarks[key], SMOOTHING_ALPHA);
       }
@@ -140,17 +158,47 @@ export const usePoseDetection = () => {
     }
 
     // Chest/Back detection
-    if (newLandmarks.leftShoulder && newLandmarks.rightShoulder && 
+    if (newLandmarks.leftShoulder && newLandmarks.rightShoulder &&
         newLandmarks.leftHip && newLandmarks.rightHip) {
       newDetectedParts.chest.visible = true;
-      
-      // Determine front/back based on shoulder width vs hip width
-      const shoulderDist = Math.abs(newLandmarks.leftShoulder.x - newLandmarks.rightShoulder.x);
-      const hipDist = Math.abs(newLandmarks.leftHip.x - newLandmarks.rightHip.x);
-      
-      newDetectedParts.chest.orientation = shoulderDist > hipDist * 0.8 ? 'front' : 'back';
-      
-      if (newDetectedParts.chest.orientation === 'back') {
+
+      let orientation = 'front';
+      if (results.poseWorldLandmarks) {
+        try {
+          const wlms = results.poseWorldLandmarks;
+          const ls = wlms[POSE_LANDMARKS.LEFT_SHOULDER];
+          const rs = wlms[POSE_LANDMARKS.RIGHT_SHOULDER];
+          const lh = wlms[POSE_LANDMARKS.LEFT_HIP];
+          const rh = wlms[POSE_LANDMARKS.RIGHT_HIP];
+          if (ls && rs && lh && rh) {
+            const shoulderMid = new THREE.Vector3(
+              (ls.x + rs.x) / 2,
+              (ls.y + rs.y) / 2,
+              (ls.z + rs.z) / 2
+            );
+            const hipMid = new THREE.Vector3(
+              (lh.x + rh.x) / 2,
+              (lh.y + rh.y) / 2,
+              (lh.z + rh.z) / 2
+            );
+            const sideVec = new THREE.Vector3(rs.x - ls.x, rs.y - ls.y, rs.z - ls.z);
+            const torsoVec = hipMid.clone().sub(shoulderMid);
+            const normal = new THREE.Vector3().crossVectors(sideVec, torsoVec);
+            orientation = normal.z < 0 ? 'front' : 'back';
+          }
+        } catch (err) {
+          console.warn('orientation calc failed', err);
+        }
+      } else {
+        // Fallback orientation estimate using widths
+        const shoulderDist = Math.abs(newLandmarks.leftShoulder.x - newLandmarks.rightShoulder.x);
+        const hipDist = Math.abs(newLandmarks.leftHip.x - newLandmarks.rightHip.x);
+        orientation = shoulderDist > hipDist * 0.8 ? 'front' : 'back';
+      }
+
+      newDetectedParts.chest.orientation = orientation;
+
+      if (orientation === 'back') {
         newDetectedParts.back.visible = true;
         newDetectedParts.back.section = 'full';
       }
