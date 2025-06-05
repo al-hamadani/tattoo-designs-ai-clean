@@ -16,6 +16,7 @@ import { DEFAULTS }                  from './utils/constants';
 
 import { Move, Loader2, Sliders } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { SegmentationEnhancer } from './utils/segmentationEnhancer';
 
 export default function RealisticARPreview({ imageUrl, design, onClose }) {
   if (typeof window === 'undefined') {
@@ -120,78 +121,136 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
   }, []);
 
   // Cleaned processSegmentation: NO red box, NO frame text, NO green rectangle
-  const processSegmentation = useCallback((results) => {
-    frameCountRef.current++;
-    lastCallbackRef.current = Date.now();
-    callbackCountRef.current++;
-  
-    if (!canvasRef.current || !videoRef.current) {
-      processingRef.current = false;
-      return;
-    }
-  
-    const ctx = canvasRef.current.getContext('2d');
-    const { width, height } = canvasRef.current;
-  
-    // Draw base video frame
-    ctx.clearRect(0, 0, width, height);
-    ctx.drawImage(videoRef.current, 0, 0, width, height);
-  
-    // Only try Three.js rendering if all components are ready
-    if (mesh && renderer && camera && scene && threeCanvas) {
-      try {
-        const transform = calculateTattooTransform({
-          bodyPart: settings.bodyPart,
-          detectedParts,
-          landmarks,
-          segmentationMask: results.segmentationMask,
-          dimensions: { width, height },
-          settings,
-          design
-        });
+ // Add these imports at the top
 
-        // Always show tattoo in manual mode
-        if (settings.bodyPart === 'manual' || transform.visible) {
-          if (settings.bodyPart === 'manual') {
-            transform.visible = true;
-            transform.position = {
-              x: settings.offset.x * width,
-              y: settings.offset.y * height,
-              z: settings.offset.z
-            };
-            transform.rotation = (settings.rotationDeg * Math.PI) / 180;
-            transform.scale = {
-              x: width * settings.scaleFactor * 0.5,
-              y: width * settings.scaleFactor * 0.5,
-              z: 1
-            };
-          }
 
-          updateMesh(transform);
-          // Bend plane geometry to match body curvature
-          warpToBody({ mesh, bodyPart: settings.bodyPart, landmarks });
+// In the component, add:
+const segmentationEnhancerRef = useRef(null);
+const enhancedSegmentationRef = useRef(null);
 
-          if (renderer.setClearColor) renderer.setClearColor(0x000000, 0);
-          if (renderer.clear) renderer.clear();
+// Initialize segmentation enhancer
+useEffect(() => {
+  segmentationEnhancerRef.current = new SegmentationEnhancer();
+  return () => {
+    segmentationEnhancerRef.current = null;
+  };
+}, []);
 
-          renderer.render(scene, camera);
+// Update the processSegmentation callback to use enhanced segmentation:
+const processSegmentation = useCallback((results) => {
+  frameCountRef.current++;
+  lastCallbackRef.current = Date.now();
+  callbackCountRef.current++;
 
-          ctx.save();
-          ctx.globalAlpha = settings.opacity;
-          ctx.globalCompositeOperation = settings.blendMode;
-          ctx.drawImage(threeCanvas, 0, 0, width, height);
-          ctx.restore();
-        }
-      } catch (err) {
-        console.error('❌ Render error:', err);
-      }
-    }
-  
+  if (!canvasRef.current || !videoRef.current) {
     processingRef.current = false;
-  }, [mesh, renderer, camera, scene, landmarks, detectedParts, settings, design, updateMesh, threeCanvas]);
-  useEffect(() => {
-    processSegmentationRef.current = processSegmentation;
-  }, [processSegmentation]);
+    return;
+  }
+
+  const ctx = canvasRef.current.getContext('2d');
+  const { width, height } = canvasRef.current;
+
+  // Draw base video frame
+  ctx.clearRect(0, 0, width, height);
+  ctx.drawImage(videoRef.current, 0, 0, width, height);
+
+  // Enhance segmentation mask
+  if (segmentationEnhancerRef.current && results.segmentationMask) {
+    enhancedSegmentationRef.current = segmentationEnhancerRef.current.enhanceSegmentation(
+      results.segmentationMask,
+      width,
+      height,
+      {
+        featherRadius: 12,
+        smoothingIterations: 3,
+        edgeThreshold: 0.4,
+        contrastBoost: 1.3
+      }
+    );
+  }
+
+  // Only try Three.js rendering if all components are ready
+  if (mesh && renderer && camera && scene && threeCanvas) {
+    try {
+      const transform = calculateTattooTransform({
+        bodyPart: settings.bodyPart,
+        detectedParts,
+        landmarks,
+        segmentationMask: enhancedSegmentationRef.current || results.segmentationMask,
+        dimensions: { width, height },
+        settings,
+        design
+      });
+
+      // Always show tattoo in manual mode
+      if (settings.bodyPart === 'manual' || transform.visible) {
+        if (settings.bodyPart === 'manual') {
+          transform.visible = true;
+          transform.position = {
+            x: settings.offset.x * width,
+            y: settings.offset.y * height,
+            z: settings.offset.z
+          };
+          transform.rotation = (settings.rotationDeg * Math.PI) / 180;
+          transform.scale = {
+            x: width * settings.scaleFactor * 0.5,
+            y: width * settings.scaleFactor * 0.5,
+            z: 1
+          };
+        }
+
+        // Update mesh with body part info for 3D geometry
+        updateMesh(transform, settings.bodyPart, landmarks, { width, height });
+
+        if (renderer.setClearColor) renderer.setClearColor(0x000000, 0);
+        if (renderer.clear) renderer.clear();
+
+        renderer.render(scene, camera);
+
+        // Get skin tone adaptive blending if available
+        let blendSettings = {
+          blendMode: settings.blendMode,
+          opacity: settings.opacity
+        };
+
+        if (segmentationEnhancerRef.current && landmarks.leftWrist) {
+          const samplePoints = [
+            landmarks.leftWrist,
+            landmarks.rightWrist,
+            landmarks.leftElbow,
+            landmarks.rightElbow
+          ].filter(p => p);
+
+          blendSettings = segmentationEnhancerRef.current.getSkinToneBlendSettings(
+            videoRef.current,
+            enhancedSegmentationRef.current || results.segmentationMask,
+            samplePoints
+          );
+        }
+
+        // Apply tattoo with enhanced segmentation mask
+        ctx.save();
+        
+        // Create clipping mask from enhanced segmentation
+        if (enhancedSegmentationRef.current) {
+          ctx.globalCompositeOperation = 'destination-in';
+          ctx.drawImage(enhancedSegmentationRef.current, 0, 0, width, height);
+          ctx.globalCompositeOperation = 'source-over';
+        }
+
+        ctx.globalAlpha = blendSettings.opacity || settings.opacity;
+        ctx.globalCompositeOperation = blendSettings.blendMode || settings.blendMode;
+        ctx.drawImage(threeCanvas, 0, 0, width, height);
+        
+        ctx.restore();
+      }
+    } catch (err) {
+      console.error('❌ Render error:', err);
+    }
+  }
+
+  processingRef.current = false;
+}, [mesh, renderer, camera, scene, landmarks, detectedParts, settings, design, updateMesh, threeCanvas]);
 
   // Update debug stats like FPS and callback count
   useEffect(() => {
