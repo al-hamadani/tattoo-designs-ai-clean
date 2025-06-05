@@ -1,36 +1,26 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+// components/RealisticARPreview/RealisticARPreview.js
 
-// External libraries
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useCamera }        from './hooks/useCamera';
+import { useMediaPipe }     from './hooks/useMediaPipe';
+import { usePoseDetection } from './hooks/usePoseDetection';
+import { useThreeScene }    from './hooks/useThreeScene';
+
+import { ARControls }        from './components/ARControls';
+import { AdvancedControls }  from './components/AdvancedControls';
+import { DebugInfo }         from './components/DebugInfo';
+import { ErrorDisplay }      from './components/ErrorDisplay';
+
+import { calculateTattooTransform }  from './utils/bodyPartDetection';
+import { compositeWithSegmentation } from './utils/imageProcessing';
+import { warpToBody }                from './utils/warpToBody';
+import { DEFAULTS }                  from './utils/constants';
+
 import { Move, Loader2, Sliders } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-// Internal hooks (order matters!)
-import { useCamera } from './hooks/useCamera';
-import { useMediaPipe } from './hooks/useMediaPipe';
-import { usePoseDetection } from './hooks/usePoseDetection';
-import { useThreeScene } from './hooks/useThreeScene';
-
-// Components
-import { ARControls } from './components/ARControls';
-import { AdvancedControls } from './components/AdvancedControls';
-import { DebugInfo } from './components/DebugInfo';
-import { ErrorDisplay } from './components/ErrorDisplay';
-
-// Utils (order matters!)
-import { DEFAULTS } from './utils/constants';
-import { calculateTattooTransform } from './utils/bodyPartDetection';
-import { compositeWithSegmentation } from './utils/imageProcessing';
-import { warpToBody } from './utils/warpToBody';
-import { SegmentationEnhancer } from './utils/segmentationEnhancer';
-
-// Ensure we're in browser environment before creating instances
-const isBrowser = typeof window !== 'undefined';
-
 export default function RealisticARPreview({ imageUrl, design, onClose }) {
-  // Add browser check
-  if (!isBrowser) {
-    return null;
-  }
+  if (typeof window === 'undefined') return null;
 
   const videoRef      = useRef(null);
   const canvasRef     = useRef(null);
@@ -42,15 +32,8 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
   const processSegmentationRef = useRef();
   const modelsReadyRef = useRef(false);
   const tattooVisibleRef = useRef(true);
-
-  // Segmentation enhancer refs
-  const segmentationEnhancerRef = useRef(null);
-  const enhancedSegmentationRef = useRef(null);
-
-  // Initialize segmentation enhancer immediately
-  if (!segmentationEnhancerRef.current && isBrowser) {
-    segmentationEnhancerRef.current = new SegmentationEnhancer();
-  }
+  const initializingRef = useRef(false);
+  const initializedRef = useRef(false);
 
   const [isLoading, setIsLoading]   = useState(true);
   const [loadingMsg, setLoadingMsg] = useState('Initializing AR…');
@@ -63,68 +46,44 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     rotationDeg: 0,
     opacity: DEFAULTS.OPACITY,
     blendMode: DEFAULTS.BLEND_MODE,
-    enablePose: true,  // ← Changed to true
-    bodyPart: 'auto',  // ← Changed to 'auto'
+    enablePose: true,
+    bodyPart: 'auto',
     facing: 'user'
   });
-  
+
   const [controlsAlwaysVisible, setControlsAlwaysVisible] = useState(true);
-  const [dragging,      setDragging]      = useState(false);
-  const [dragStart,     setDragStart]     = useState({ x: 0, y: 0 });
-  const [initOffset,    setInitOffset]    = useState({ x: 0, y: 0 });
-  const [pinching,     setPinching]     = useState(false);
-  const pinchRef       = useRef(null);
-  const [showControls,  setShowControls]  = useState(true);
-  const [showAdvanced,  setShowAdvanced]  = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [initOffset, setInitOffset] = useState({ x: 0, y: 0 });
+  const [pinching, setPinching] = useState(false);
+  const pinchRef = useRef(null);
+  const [showControls, setShowControls] = useState(true);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const { startCamera, stopCamera } = useCamera(videoRef, settings.facing);
   const { landmarks, detectedParts, processResults } = usePoseDetection();
-
-  // HOOK: useThreeScene
   const {
     scene, camera, renderer, mesh, threeCanvas,
     initThree, updateMesh, cleanup: cleanupThree
   } = useThreeScene(imageUrl);
-
-  // MediaPipe
   const {
     poseRef, segRef, initModels, sendFrame, modelsReady, setModelsReady
   } = useMediaPipe({
     onPoseResults: processResults,
-    onSegmentationResults: processSegmentationCallback
+    onSegmentationResults: (results) => {
+      if (processSegmentationRef.current) {
+        processSegmentationRef.current(results);
+      }
+    }
   });
 
-  // Debug effect for Three.js status
-  useEffect(() => {
-    console.log('🔍 Three.js objects status:', {
-      scene: !!scene,
-      camera: !!camera,
-      renderer: !!renderer,
-      mesh: !!mesh,
-      threeCanvas: !!threeCanvas
-    });
-  }, [scene, camera, renderer, mesh, threeCanvas]);
-
-  // UI state debug effect
-  useEffect(() => {
-    console.log('🎮 UI State:', {
-      showControls,
-      showAdvanced,
-      enablePose: settings.enablePose,
-      bodyPart: settings.bodyPart,
-      isLoading
-    });
-  }, [showControls, showAdvanced, settings.enablePose, settings.bodyPart, isLoading]);
-
-  // Keep modelsReadyRef in sync
   useEffect(() => {
     modelsReadyRef.current = modelsReady;
   }, [modelsReady]);
 
-  // Body part change handler
   const handleBodyPartChange = useCallback((bodyPart) => {
-    setSettings(prev => ({ 
-      ...prev, 
+    setSettings(prev => ({
+      ...prev,
       bodyPart,
       ...(bodyPart !== 'manual' && {
         offset: { x: 0, y: 0, z: 0.01 }
@@ -132,130 +91,76 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     }));
   }, []);
 
-  // Segmentation results processing
-  const processSegmentationCallback = useCallback((results) => {
-  frameCountRef.current++;
-  lastCallbackRef.current = Date.now();
-  callbackCountRef.current++;
+  const processSegmentation = useCallback((results) => {
+    frameCountRef.current++;
+    lastCallbackRef.current = Date.now();
+    callbackCountRef.current++;
 
-  if (!canvasRef.current || !videoRef.current) {
-    processingRef.current = false;
-    return;
-  }
-
-  const ctx = canvasRef.current.getContext('2d');
-  const { width, height } = canvasRef.current;
-
-  // Draw base video frame
-  ctx.clearRect(0, 0, width, height);
-  ctx.drawImage(videoRef.current, 0, 0, width, height);
-
-  // Test rectangle to verify canvas rendering
-  ctx.fillStyle = 'red';
-  ctx.fillRect(10, 10, 50, 50);
-
-  // Enhance segmentation mask
-  if (segmentationEnhancerRef.current && results.segmentationMask) {
-    enhancedSegmentationRef.current = segmentationEnhancerRef.current.enhanceSegmentation(
-      results.segmentationMask,
-      width,
-      height,
-      {
-        featherRadius: 12,
-        smoothingIterations: 3,
-        edgeThreshold: 0.4,
-        contrastBoost: 1.3
-      }
-    );
-  }
-
-  // Only try Three.js rendering if all components are ready
-  if (mesh && renderer && camera && scene && threeCanvas) {
-    try {
-      const transform = calculateTattooTransform({
-        bodyPart: settings.bodyPart,
-        detectedParts,
-        landmarks,
-        segmentationMask: enhancedSegmentationRef.current || results.segmentationMask,
-        dimensions: { width, height },
-        settings,
-        design
-      });
-
-      // Always show tattoo in manual mode
-      if (settings.bodyPart === 'manual' || transform.visible) {
-        if (settings.bodyPart === 'manual') {
-          transform.visible = true;
-          transform.position = {
-            x: settings.offset.x * width,
-            y: settings.offset.y * height,
-            z: settings.offset.z
-          };
-          transform.rotation = (settings.rotationDeg * Math.PI) / 180;
-          transform.scale = {
-            x: width * settings.scaleFactor * 0.5,
-            y: width * settings.scaleFactor * 0.5,
-            z: 1
-          };
-        }
-
-        // Update mesh with body part info for 3D geometry
-        updateMesh(transform, settings.bodyPart, landmarks, { width, height });
-
-        if (renderer.setClearColor) renderer.setClearColor(0x000000, 0);
-        if (renderer.clear) renderer.clear();
-
-        renderer.render(scene, camera);
-
-        // Get skin tone adaptive blending if available
-        let blendSettings = {
-          blendMode: settings.blendMode,
-          opacity: settings.opacity
-        };
-
-        if (segmentationEnhancerRef.current && landmarks.leftWrist) {
-          const samplePoints = [
-            landmarks.leftWrist,
-            landmarks.rightWrist,
-            landmarks.leftElbow,
-            landmarks.rightElbow
-          ].filter(p => p);
-
-          blendSettings = segmentationEnhancerRef.current.getSkinToneBlendSettings(
-            videoRef.current,
-            enhancedSegmentationRef.current || results.segmentationMask,
-            samplePoints
-          );
-        }
-
-        // Apply tattoo with enhanced segmentation mask
-        ctx.save();
-        
-        // Create clipping mask from enhanced segmentation
-        if (enhancedSegmentationRef.current) {
-          ctx.globalCompositeOperation = 'destination-in';
-          ctx.drawImage(enhancedSegmentationRef.current, 0, 0, width, height);
-          ctx.globalCompositeOperation = 'source-over';
-        }
-
-        ctx.globalAlpha = blendSettings.opacity || settings.opacity;
-        ctx.globalCompositeOperation = blendSettings.blendMode || settings.blendMode;
-        ctx.drawImage(threeCanvas, 0, 0, width, height);
-        
-        ctx.restore();
-      }
-    } catch (err) {
-      console.error('❌ Render error:', err);
+    if (!canvasRef.current || !videoRef.current) {
+      processingRef.current = false;
+      return;
     }
-  }
 
-  processingRef.current = false;
-}, [mesh, renderer, camera, scene, landmarks, detectedParts, settings, design, updateMesh, threeCanvas]);
+    const ctx = canvasRef.current.getContext('2d');
+    const { width, height } = canvasRef.current;
 
-  // Set the ref so it can be used elsewhere if needed
-  processSegmentationRef.current = processSegmentationCallback;
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(videoRef.current, 0, 0, width, height);
 
-  // Update debug stats like FPS and callback count
+    if (mesh && renderer && camera && scene && threeCanvas) {
+      try {
+        const transform = calculateTattooTransform({
+          bodyPart: settings.bodyPart,
+          detectedParts,
+          landmarks,
+          segmentationMask: results.segmentationMask,
+          dimensions: { width, height },
+          settings,
+          design
+        });
+
+        if (settings.bodyPart === 'manual' || transform.visible) {
+          if (settings.bodyPart === 'manual') {
+            transform.visible = true;
+            transform.position = {
+              x: settings.offset.x * width,
+              y: settings.offset.y * height,
+              z: settings.offset.z
+            };
+            transform.rotation = (settings.rotationDeg * Math.PI) / 180;
+            transform.scale = {
+              x: width * settings.scaleFactor * 0.5,
+              y: width * settings.scaleFactor * 0.5,
+              z: 1
+            };
+          }
+
+          updateMesh(transform);
+          warpToBody({ mesh, bodyPart: settings.bodyPart, landmarks });
+
+          if (renderer.setClearColor) renderer.setClearColor(0x000000, 0);
+          if (renderer.clear) renderer.clear();
+
+          renderer.render(scene, camera);
+
+          ctx.save();
+          ctx.globalAlpha = settings.opacity;
+          ctx.globalCompositeOperation = settings.blendMode;
+          ctx.drawImage(threeCanvas, 0, 0, width, height);
+          ctx.restore();
+        }
+      } catch (err) {
+        console.error('❌ Render error:', err);
+      }
+    }
+
+    processingRef.current = false;
+  }, [mesh, renderer, camera, scene, landmarks, detectedParts, settings, design, updateMesh, threeCanvas]);
+
+  useEffect(() => {
+    processSegmentationRef.current = processSegmentation;
+  }, [processSegmentation]);
+
   useEffect(() => {
     let lastFrame = 0;
     let lastTime = Date.now();
@@ -275,29 +180,17 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     return () => clearInterval(interval);
   }, []);
 
-  // Animation loop
   const loop = useCallback(async () => {
-    if (videoRef.current) {
-      console.log('Video state:', {
-        readyState: videoRef.current.readyState,
-        paused: videoRef.current.paused,
-        currentTime: videoRef.current.currentTime
-      });
-    }
-
     if (!videoRef.current) {
-      console.warn('⚠️ No video element in loop');
       frameIdRef.current = requestAnimationFrame(loop);
       return;
     }
 
     if (videoRef.current.readyState < 3) {
-      console.log('⏳ Video not ready, state:', videoRef.current.readyState);
       frameIdRef.current = requestAnimationFrame(loop);
       return;
     }
 
-    // Check if callbacks are stale
     const timeSinceLastCallback = Date.now() - lastCallbackRef.current;
     if (timeSinceLastCallback > 1000 && frameCountRef.current > 10) {
       console.warn('⚠️ No callbacks for', timeSinceLastCallback, 'ms');
@@ -317,114 +210,91 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     frameIdRef.current = requestAnimationFrame(loop);
   }, [sendFrame]);
 
-  // AR Boot
-  // Add this ref at the top with other refs:
-const initializingRef = useRef(false);
-const initializedRef = useRef(false);
+  useEffect(() => {
+    let mounted = true;
 
-// Update the AR Boot useEffect:
-useEffect(() => {
-  let mounted = true;
+    const initialize = async () => {
+      if (initializingRef.current || initializedRef.current) return;
+      initializingRef.current = true;
 
-  const initialize = async () => {
-    // Prevent multiple initializations
-    if (initializingRef.current || initializedRef.current) {
-      console.log('⏳ Already initialized or initializing');
-      return;
-    }
-    
-    initializingRef.current = true;
+      try {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        if (!mounted) return;
 
-    try {
-      console.log('🚀 Starting AR initialization...');
-      
-      // Wait a bit for component to stabilize
-      await new Promise(resolve => setTimeout(resolve, 500));
-      if (!mounted) return;
-      
-      const { width, height } = await startCamera();
-      if (!mounted) return;
+        const { width, height } = await startCamera();
+        if (!mounted) return;
 
-      setLoadingMsg('Loading AI models…');
-      await initModels();
-      if (!mounted) return;
+        setLoadingMsg('Loading AI models…');
+        await initModels();
+        if (!mounted) return;
 
-      initThree(width, height);
+        initThree(width, height);
 
-      if (canvasRef.current) {
-        canvasRef.current.width = width;
-        canvasRef.current.height = height;
+        if (canvasRef.current) {
+          canvasRef.current.width = width;
+          canvasRef.current.height = height;
+        }
+
+        setIsLoading(false);
+        initializedRef.current = true;
+        loop();
+      } catch (e) {
+        console.error('Boot error:', e);
+        if (mounted) setError(e.message || 'Failed to initialize AR');
+      } finally {
+        initializingRef.current = false;
       }
+    };
 
-      setIsLoading(false);
-      initializedRef.current = true;
-      console.log('🚀 Starting animation loop');
-      loop();
-    } catch (e) {
-      console.error('Boot error:', e);
-      if (mounted) {
-        setError(e.message || 'Failed to initialize AR');
+    const controlsTimer = !controlsAlwaysVisible
+      ? setTimeout(() => setShowControls(false), 10000)
+      : null;
+
+    const timer = setTimeout(initialize, 100);
+
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+      if (controlsTimer) clearTimeout(controlsTimer);
+      if (initializedRef.current) {
+        stopCamera();
+        cleanupThree();
+        if (frameIdRef.current) {
+          cancelAnimationFrame(frameIdRef.current);
+          frameIdRef.current = null;
+        }
       }
-    } finally {
-      initializingRef.current = false;
-    }
-  };
+    };
+  }, []);
 
-  // Only auto-hide if controlsAlwaysVisible is false
-  let controlsTimer;
-  if (!controlsAlwaysVisible) {
-    controlsTimer = setTimeout(() => setShowControls(false), 10000);
-  }
+  useEffect(() => {
+    if (!initializedRef.current) return;
 
-  const timer = setTimeout(initialize, 100);
-
-  return () => {
-    mounted = false;
-    clearTimeout(timer);
-    if (controlsTimer) clearTimeout(controlsTimer);
-    
-    // Only cleanup if we actually initialized
-    if (initializedRef.current) {
-      stopCamera();
-      cleanupThree();
-      if (frameIdRef.current) {
-        cancelAnimationFrame(frameIdRef.current);
-        frameIdRef.current = null;
+    let cancelled = false;
+    const restart = async () => {
+      try {
+        stopCamera();
+        const { width, height } = await startCamera();
+        if (!cancelled && canvasRef.current) {
+          canvasRef.current.width = width;
+          canvasRef.current.height = height;
+        }
+      } catch (e) {
+        console.error('Camera switch error:', e);
+        if (!cancelled) setError(e.message || 'Failed to switch camera');
       }
-    }
-  };
-}, []); // Remove all dependencies to run only once
+    };
 
-// Restart camera when facing mode changes after initialization
-useEffect(() => {
-  if (!initializedRef.current) return;
+    restart();
+    return () => {
+      cancelled = true;
+    };
+  }, [settings.facing]);
 
-  let cancelled = false;
-  const restart = async () => {
-    try {
-      stopCamera();
-      const { width, height } = await startCamera();
-      if (!cancelled && canvasRef.current) {
-        canvasRef.current.width = width;
-        canvasRef.current.height = height;
-      }
-    } catch (e) {
-      console.error('Camera switch error:', e);
-      if (!cancelled) setError(e.message || 'Failed to switch camera');
-    }
-  };
-
-  restart();
-  return () => {
-    cancelled = true;
-  };
-}, [settings.facing]);
-  // Drag handlers
   const handleDragStart = (e) => {
     e.preventDefault();
     setDragging(true);
     setShowControls(true);
-
     const p = e.touches ? e.touches[0] : e;
     const rect = canvasRef.current.getBoundingClientRect();
     setDragStart({ x: p.clientX - rect.left, y: p.clientY - rect.top });
@@ -436,7 +306,7 @@ useEffect(() => {
     const p = e.touches ? e.touches[0] : e;
     const rect = canvasRef.current.getBoundingClientRect();
     const dx = (p.clientX - rect.left - dragStart.x) / rect.width;
-    const dy = (p.clientY - rect.top  - dragStart.y) / rect.height;
+    const dy = (p.clientY - rect.top - dragStart.y) / rect.height;
 
     setSettings((s) => ({
       ...s,
@@ -499,7 +369,6 @@ useEffect(() => {
     }
   };
 
-  // Save PNG of AR preview
   const capturePhoto = () => {
     if (!canvasRef.current) return;
     canvasRef.current.toBlob((blob) => {
@@ -546,7 +415,6 @@ useEffect(() => {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        // ← always show controls on click and log
         onClick={() => {
           if (!dragging) {
             setShowControls(true);
@@ -555,7 +423,6 @@ useEffect(() => {
         }}
       />
 
-      {/* Always visible hint when controls are hidden */}
       {!showControls && !isLoading && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -568,8 +435,7 @@ useEffect(() => {
           </div>
         </motion.div>
       )}
-      
-      {/* Controls visibility toggle button (always visible) */}
+
       <button
         onClick={() => setShowControls(!showControls)}
         className={`fixed top-4 right-4 p-3 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-black/80 transition-all z-30 ${

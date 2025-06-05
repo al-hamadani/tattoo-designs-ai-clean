@@ -1,6 +1,7 @@
 // next.config.mjs
 import { withSentryConfig } from '@sentry/nextjs'
 
+
 const nextConfig = {
   reactStrictMode: true,
   webpack: (config, { isServer }) => {
@@ -37,3 +38,6 @@ const sentryWebpackPluginOptions = {
 }
 
 export default withSentryConfig(nextConfig, sentryWebpackPluginOptions)
+
+
+
