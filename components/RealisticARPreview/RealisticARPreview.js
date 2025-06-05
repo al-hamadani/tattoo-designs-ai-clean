@@ -52,6 +52,8 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
   const [dragging,      setDragging]      = useState(false);
   const [dragStart,     setDragStart]     = useState({ x: 0, y: 0 });
   const [initOffset,    setInitOffset]    = useState({ x: 0, y: 0 });
+  const [pinching,     setPinching]     = useState(false);
+  const pinchRef       = useRef(null);
   const [showControls,  setShowControls]  = useState(true);
   const [showAdvanced,  setShowAdvanced]  = useState(false);
 
@@ -375,6 +377,55 @@ useEffect(() => {
 
   const handleDragEnd = () => setDragging(false);
 
+  const handleTouchStart = (e) => {
+    if (e.touches && e.touches.length === 2) {
+      e.preventDefault();
+      setPinching(true);
+      const [t1, t2] = e.touches;
+      const dx = t2.clientX - t1.clientX;
+      const dy = t2.clientY - t1.clientY;
+      pinchRef.current = {
+        distance: Math.hypot(dx, dy),
+        angle: Math.atan2(dy, dx),
+        scale: settings.scaleFactor,
+        rotation: settings.rotationDeg,
+      };
+    } else {
+      handleDragStart(e);
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (pinching && e.touches && e.touches.length === 2) {
+      e.preventDefault();
+      const [t1, t2] = e.touches;
+      const dx = t2.clientX - t1.clientX;
+      const dy = t2.clientY - t1.clientY;
+      const dist = Math.hypot(dx, dy);
+      const angle = Math.atan2(dy, dx);
+      const scaleChange = dist / pinchRef.current.distance;
+      const newScale = Math.max(0.05, Math.min(0.5, pinchRef.current.scale * scaleChange));
+      const rotChange = (angle - pinchRef.current.angle) * (180 / Math.PI);
+      setSettings((s) => ({
+        ...s,
+        scaleFactor: newScale,
+        rotationDeg: pinchRef.current.rotation + rotChange,
+      }));
+    } else {
+      handleDragMove(e);
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (pinching && (!e.touches || e.touches.length < 2)) {
+      setPinching(false);
+      pinchRef.current = null;
+    }
+    if (!pinching) {
+      handleDragEnd();
+    }
+  };
+
   // Save PNG of AR preview
   const capturePhoto = () => {
     if (!canvasRef.current) return;
@@ -393,7 +444,7 @@ useEffect(() => {
   return (
     <div
       className="fixed inset-0 bg-black select-none overflow-hidden z-50 safe-area-inset"
-      onTouchMove={(e) => dragging && e.preventDefault()}
+      onTouchMove={(e) => (dragging || pinching) && e.preventDefault()}
     >
       <DebugInfo
         show={!isLoading}
@@ -419,9 +470,9 @@ useEffect(() => {
         onMouseMove={handleDragMove}
         onMouseUp={handleDragEnd}
         onMouseLeave={handleDragEnd}
-        onTouchStart={handleDragStart}
-        onTouchMove={handleDragMove}
-        onTouchEnd={handleDragEnd}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         // ← always show controls on click and log
         onClick={() => {
           if (!dragging) {

@@ -77,6 +77,7 @@ export const useThreeScene = (imageUrl) => {
         meshRef.current.material.color.set(0xffffff);
         meshRef.current.material.opacity = 1.0;
         meshRef.current.material.needsUpdate = true;
+        meshRef.current.visible = true;
 
         textureRef.current = texture;
 
@@ -113,9 +114,10 @@ export const useThreeScene = (imageUrl) => {
             meshRef.current.material.map.dispose();
           }
           meshRef.current.material.map = null;
-          meshRef.current.material.color.set(0xff00ff); // Magenta
-          meshRef.current.material.opacity = 0.5;
+          meshRef.current.material.color.set(0xffffff);
+          meshRef.current.material.opacity = 0.0;
           meshRef.current.material.needsUpdate = true;
+          meshRef.current.visible = false;
         }
       }
     } else {
@@ -158,10 +160,12 @@ export const useThreeScene = (imageUrl) => {
 
     const geometry = new THREE.PlaneGeometry(1, 1);
     const material = new THREE.MeshStandardMaterial({
-      transparent: true, side: THREE.DoubleSide,
-      color: 0xff00ff, opacity: 0.5,
+      transparent: true,
+      side: THREE.DoubleSide,
+      color: 0xffffff,
+      opacity: 0,
     });
-    console.log('🎨 Initial material created with magenta. Material ID:', material.uuid);
+    console.log('🎨 Initial material created transparent. Material ID:', material.uuid);
 
     meshRef.current = new THREE.Mesh(geometry, material);
     sceneRef.current.add(meshRef.current);
