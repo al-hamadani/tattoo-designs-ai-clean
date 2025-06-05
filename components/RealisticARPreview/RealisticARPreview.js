@@ -11,6 +11,7 @@ import { ErrorDisplay }      from './components/ErrorDisplay';
 
 import { calculateTattooTransform }  from './utils/bodyPartDetection';
 import { compositeWithSegmentation } from './utils/imageProcessing';
+import { warpToBody }                from './utils/warpToBody';
 import { DEFAULTS }                  from './utils/constants';
 
 import { Move, Loader2, Sliders } from 'lucide-react';
@@ -167,6 +168,8 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
           }
 
           updateMesh(transform);
+          // Bend plane geometry to match body curvature
+          warpToBody({ mesh, bodyPart: settings.bodyPart, landmarks });
 
           if (renderer.setClearColor) renderer.setClearColor(0x000000, 0);
           if (renderer.clear) renderer.clear();

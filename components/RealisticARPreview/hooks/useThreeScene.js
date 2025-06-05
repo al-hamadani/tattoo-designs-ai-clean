@@ -158,7 +158,8 @@ export const useThreeScene = (imageUrl) => {
     dirLight.position.set(0, 1, 1);
     sceneRef.current.add(dirLight);
 
-    const geometry = new THREE.PlaneGeometry(1, 1);
+    // Use a subdivided plane so vertices can be warped to match body curvature
+    const geometry = new THREE.PlaneGeometry(1, 1, 20, 20);
     const material = new THREE.MeshStandardMaterial({
       transparent: true,
       side: THREE.DoubleSide,
