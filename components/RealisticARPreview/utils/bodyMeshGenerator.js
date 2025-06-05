@@ -1,6 +1,11 @@
 // components/RealisticARPreview/utils/bodyMeshGenerator.js
 import * as THREE from 'three';
 
+// Add a check for browser environment
+if (typeof window === 'undefined') {
+  global.THREE = THREE;
+}
+
 // Parametric mesh generators for different body parts
 export class BodyMeshGenerator {
   constructor() {

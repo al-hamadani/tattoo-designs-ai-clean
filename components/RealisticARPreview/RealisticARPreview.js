@@ -1,25 +1,34 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useCamera }        from './hooks/useCamera';
-import { useMediaPipe }     from './hooks/useMediaPipe';
-import { usePoseDetection } from './hooks/usePoseDetection';
-import { useThreeScene }    from './hooks/useThreeScene';
 
-import { ARControls }        from './components/ARControls';
-import { AdvancedControls }  from './components/AdvancedControls';
-import { DebugInfo }         from './components/DebugInfo';
-import { ErrorDisplay }      from './components/ErrorDisplay';
-
-import { calculateTattooTransform }  from './utils/bodyPartDetection';
-import { compositeWithSegmentation } from './utils/imageProcessing';
-import { warpToBody }                from './utils/warpToBody';
-import { DEFAULTS }                  from './utils/constants';
-
+// External libraries
 import { Move, Loader2, Sliders } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+// Internal hooks (order matters!)
+import { useCamera } from './hooks/useCamera';
+import { useMediaPipe } from './hooks/useMediaPipe';
+import { usePoseDetection } from './hooks/usePoseDetection';
+import { useThreeScene } from './hooks/useThreeScene';
+
+// Components
+import { ARControls } from './components/ARControls';
+import { AdvancedControls } from './components/AdvancedControls';
+import { DebugInfo } from './components/DebugInfo';
+import { ErrorDisplay } from './components/ErrorDisplay';
+
+// Utils (order matters!)
+import { DEFAULTS } from './utils/constants';
+import { calculateTattooTransform } from './utils/bodyPartDetection';
+import { compositeWithSegmentation } from './utils/imageProcessing';
+import { warpToBody } from './utils/warpToBody';
 import { SegmentationEnhancer } from './utils/segmentationEnhancer';
 
+// Ensure we're in browser environment before creating instances
+const isBrowser = typeof window !== 'undefined';
+
 export default function RealisticARPreview({ imageUrl, design, onClose }) {
-  if (typeof window === 'undefined') {
+  // Add browser check
+  if (!isBrowser) {
     return null;
   }
 
@@ -39,7 +48,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
   const enhancedSegmentationRef = useRef(null);
 
   // Initialize segmentation enhancer immediately
-  if (!segmentationEnhancerRef.current && typeof window !== 'undefined') {
+  if (!segmentationEnhancerRef.current && isBrowser) {
     segmentationEnhancerRef.current = new SegmentationEnhancer();
   }
 
