@@ -34,6 +34,15 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
   const modelsReadyRef = useRef(false);
   const tattooVisibleRef = useRef(true);
 
+  // Segmentation enhancer refs
+  const segmentationEnhancerRef = useRef(null);
+  const enhancedSegmentationRef = useRef(null);
+
+  // Initialize segmentation enhancer immediately
+  if (!segmentationEnhancerRef.current && typeof window !== 'undefined') {
+    segmentationEnhancerRef.current = new SegmentationEnhancer();
+  }
+
   const [isLoading, setIsLoading]   = useState(true);
   const [loadingMsg, setLoadingMsg] = useState('Initializing AR…');
   const [error,     setError]       = useState(null);
@@ -73,13 +82,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     poseRef, segRef, initModels, sendFrame, modelsReady, setModelsReady
   } = useMediaPipe({
     onPoseResults: processResults,
-    onSegmentationResults: (results) => {
-      if (processSegmentationRef.current) {
-        processSegmentationRef.current(results);
-      } else {
-        console.warn('processSegmentation not yet defined');
-      }
-    }
+    onSegmentationResults: processSegmentationCallback
   });
 
   // Debug effect for Three.js status
@@ -120,24 +123,8 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     }));
   }, []);
 
-  // Cleaned processSegmentation: NO red box, NO frame text, NO green rectangle
- // Add these imports at the top
-
-
-// In the component, add:
-const segmentationEnhancerRef = useRef(null);
-const enhancedSegmentationRef = useRef(null);
-
-// Initialize segmentation enhancer
-useEffect(() => {
-  segmentationEnhancerRef.current = new SegmentationEnhancer();
-  return () => {
-    segmentationEnhancerRef.current = null;
-  };
-}, []);
-
-// Update the processSegmentation callback to use enhanced segmentation:
-const processSegmentation = useCallback((results) => {
+  // Segmentation results processing
+  const processSegmentationCallback = useCallback((results) => {
   frameCountRef.current++;
   lastCallbackRef.current = Date.now();
   callbackCountRef.current++;
@@ -153,6 +140,10 @@ const processSegmentation = useCallback((results) => {
   // Draw base video frame
   ctx.clearRect(0, 0, width, height);
   ctx.drawImage(videoRef.current, 0, 0, width, height);
+
+  // Test rectangle to verify canvas rendering
+  ctx.fillStyle = 'red';
+  ctx.fillRect(10, 10, 50, 50);
 
   // Enhance segmentation mask
   if (segmentationEnhancerRef.current && results.segmentationMask) {
@@ -252,6 +243,9 @@ const processSegmentation = useCallback((results) => {
   processingRef.current = false;
 }, [mesh, renderer, camera, scene, landmarks, detectedParts, settings, design, updateMesh, threeCanvas]);
 
+  // Set the ref so it can be used elsewhere if needed
+  processSegmentationRef.current = processSegmentationCallback;
+
   // Update debug stats like FPS and callback count
   useEffect(() => {
     let lastFrame = 0;
@@ -274,6 +268,14 @@ const processSegmentation = useCallback((results) => {
 
   // Animation loop
   const loop = useCallback(async () => {
+    if (videoRef.current) {
+      console.log('Video state:', {
+        readyState: videoRef.current.readyState,
+        paused: videoRef.current.paused,
+        currentTime: videoRef.current.currentTime
+      });
+    }
+
     if (!videoRef.current) {
       console.warn('⚠️ No video element in loop');
       frameIdRef.current = requestAnimationFrame(loop);
