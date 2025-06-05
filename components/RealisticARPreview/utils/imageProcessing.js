@@ -13,13 +13,19 @@ export const compositeWithSegmentation = ({
     tempCanvas.width = width;
     tempCanvas.height = height;
     const tempCtx = tempCanvas.getContext('2d');
-    
+
+    // Clear previous frame data
+    tempCtx.clearRect(0, 0, width, height);
+    ctx.clearRect(0, 0, width, height);
+
     // Draw three.js render
     tempCtx.drawImage(threeCanvas, 0, 0);
-    
-    // Apply segmentation mask
+
+    // Apply segmentation mask with slight blur to soften edges
+    tempCtx.filter = 'blur(2px)';
     tempCtx.globalCompositeOperation = 'destination-in';
     tempCtx.drawImage(segmentationMask, 0, 0, width, height);
+    tempCtx.filter = 'none';
     
     // Draw masked result to main canvas
     ctx.globalCompositeOperation = blendMode;
