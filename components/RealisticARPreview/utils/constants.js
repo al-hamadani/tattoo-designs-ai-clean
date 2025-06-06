@@ -72,4 +72,24 @@ export const DEFAULTS = {
       modelSelection: 1, // 0 = general, 1 = landscape
       selfieMode: true,
     },
+
+  };
+
+  const CONFIG = {
+    mesh: {
+      subdivisionLevels: { min: 1, max: 4 },
+      curvatureThreshold: 0.3, // radians
+      limbWidthMultiplier: 1.0,
+      torsoSubdivisions: 8
+    },
+    rendering: {
+      enableShadows: true,
+      curvatureIntensity: 0.3,
+      fresnelPower: 2.0
+    },
+    performance: {
+      enableMeshCaching: true,
+      maxCachedMeshes: 50,
+      updateThreshold: 0.02 // minimum movement to trigger update
+    }
   };
