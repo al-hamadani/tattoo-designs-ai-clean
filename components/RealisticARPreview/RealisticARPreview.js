@@ -1,5 +1,3 @@
-// components/RealisticARPreview/RealisticARPreview.js
-
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useCamera }        from './hooks/useCamera';
 import { useMediaPipe }     from './hooks/useMediaPipe';
@@ -91,6 +89,13 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     }));
   }, []);
 
+  // -------------------------------------------------------------------------
+  // processSegmentation callback
+  // -------------------------------------------------------------------------
+  // Added support for passing mesh hints to updateMesh and warpToBody.
+  // This enables more accurate warping where a model provides extra surface
+  // information (e.g., normal map, curvature) in transform.meshHints.
+  // -------------------------------------------------------------------------
   const processSegmentation = useCallback((results) => {
     frameCountRef.current++;
     lastCallbackRef.current = Date.now();
@@ -135,8 +140,20 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
             };
           }
 
-          updateMesh(transform);
-          warpToBody({ mesh, bodyPart: settings.bodyPart, landmarks });
+          // Pass extended context (body part, landmarks, viewport) to mesh
+          updateMesh(transform, settings.bodyPart, landmarks, { width, height });
+
+          // Apply enhanced warping when mesh hints are provided
+          if (transform.meshHints) {
+            warpToBody({
+              mesh,
+              bodyPart: settings.bodyPart,
+              landmarks,
+              meshHints: transform.meshHints
+            });
+          } else {
+            warpToBody({ mesh, bodyPart: settings.bodyPart, landmarks });
+          }
 
           if (renderer.setClearColor) renderer.setClearColor(0x000000, 0);
           if (renderer.clear) renderer.clear();
@@ -157,6 +174,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     processingRef.current = false;
   }, [mesh, renderer, camera, scene, landmarks, detectedParts, settings, design, updateMesh, threeCanvas]);
 
+  // Keep a stable reference for MediaPipe to invoke.
   useEffect(() => {
     processSegmentationRef.current = processSegmentation;
   }, [processSegmentation]);

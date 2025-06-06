@@ -1,4 +1,3 @@
-// components/RealisticARPreview/hooks/useThreeScene.js
 import { useRef, useCallback, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { webglContextManager } from '../utils/webglContextManager';
@@ -168,15 +167,18 @@ export const useThreeScene = (imageUrl) => {
     dirLight2.position.set(-1, -0.5, 1);
     sceneRef.current.add(dirLight2);
 
-    // Create initial mesh with flat geometry
+    // Create initial mesh with enhanced material
     const geometry = new THREE.PlaneGeometry(1, 1);
     const material = new THREE.MeshStandardMaterial({
       transparent: true,
       side: THREE.DoubleSide,
-      color: 0xff00ff,
-      opacity: 0.5,
+      color: 0xffffff,
+      opacity: 1.0,
       roughness: 0.7,
-      metalness: 0.1
+      metalness: 0.1,
+      normalScale: new THREE.Vector2(1, 1),
+      displacementScale: 0,
+      envMapIntensity: 0.5
     });
 
     meshRef.current = new THREE.Mesh(geometry, material);
@@ -198,7 +200,6 @@ export const useThreeScene = (imageUrl) => {
 
     console.log('🔄 Updating mesh for body part:', bodyPart);
 
-    // Get appropriate geometry for body part
     const newGeometry = meshGeneratorRef.current.getMeshForBodyPart(
       bodyPart,
       landmarks,
@@ -206,12 +207,10 @@ export const useThreeScene = (imageUrl) => {
     );
 
     if (newGeometry) {
-      // Dispose old geometry
       if (meshRef.current.geometry) {
         meshRef.current.geometry.dispose();
       }
 
-      // Apply new geometry
       meshRef.current.geometry = newGeometry;
       meshRef.current.geometry.computeBoundingSphere();
       
@@ -221,33 +220,41 @@ export const useThreeScene = (imageUrl) => {
     }
   }, []);
 
-  // Update mesh transform
+  // Update mesh transform with mesh hints
   const updateMesh = useCallback((transform, bodyPart, landmarks, dimensions) => {
     if (!meshRef.current || !transform) return;
     
-    // Update geometry if body part changed
     if (bodyPart && bodyPart !== 'manual' && landmarks && dimensions) {
       updateMeshForBodyPart(bodyPart, landmarks, dimensions);
     }
     
     if (transform.visible) {
-      // Update position
       meshRef.current.position.x = transform.position.x;
       meshRef.current.position.y = transform.position.y;
       meshRef.current.position.z = transform.position.z || 0;
-      
-      // Update rotation
+
       meshRef.current.rotation.z = transform.rotation || 0;
-      
-      // Update scale
+
       meshRef.current.scale.x = transform.scale.x;
       meshRef.current.scale.y = transform.scale.y;
       meshRef.current.scale.z = transform.scale.z || 1;
-      
-      // Make visible
+
+      if (transform.meshHints && meshRef.current.material) {
+        if (transform.meshHints.surfaceNormal) {
+          meshRef.current.material.normalScale = new THREE.Vector2(
+            transform.meshHints.surfaceNormal.x,
+            transform.meshHints.surfaceNormal.y
+          );
+        }
+
+        if (transform.meshHints.curvature > 0.2) {
+          meshRef.current.material.displacementScale = transform.meshHints.curvature * 0.1;
+        }
+      }
+
       meshRef.current.visible = true;
-      
-      console.log('📐 Mesh transform updated');
+
+      console.log('📐 Mesh transform updated with hints:', transform.meshHints);
     } else {
       meshRef.current.visible = false;
     }

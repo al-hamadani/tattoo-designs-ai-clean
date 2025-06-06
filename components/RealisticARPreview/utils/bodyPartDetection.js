@@ -48,6 +48,9 @@ const scoreBodyPart = ({ keys, landmarks, mask, width, height }) => {
   return visibilityScore * coverage;
 };
 
+// Add this to the existing file after the imports
+
+// Enhanced transform calculation with mesh deformation hints
 export const calculateTattooTransform = ({
   bodyPart,
   detectedParts,
@@ -74,7 +77,12 @@ export const calculateTattooTransform = ({
         y: width * scaleFactor * 0.5,
         z: 1
       },
-      visible: true
+      visible: true,
+      meshHints: {
+        curvature: 0.1,
+        twist: 0,
+        bendAngle: 0
+      }
     };
   }
 
@@ -83,7 +91,121 @@ export const calculateTattooTransform = ({
     return autoDetectTransform({ detectedParts, landmarks, segmentationMask, dimensions, settings, design });
   }
 
-  // Specific body part transforms
+  // Get base transform from existing functions
+  const baseTransform = getBaseTransform(bodyPart, landmarks, detectedParts, dimensions, settings, design);
+  
+  // Enhance with mesh deformation hints
+  if (baseTransform.visible) {
+    baseTransform.meshHints = calculateMeshHints(bodyPart, landmarks, dimensions);
+  }
+  
+  return baseTransform;
+};
+
+// Calculate mesh deformation hints based on pose
+const calculateMeshHints = (bodyPart, landmarks, dimensions) => {
+  const hints = {
+    curvature: 0.1,
+    twist: 0,
+    bendAngle: 0,
+    surfaceNormal: { x: 0, y: 0, z: 1 }
+  };
+  
+  if (bodyPart.includes('arm')) {
+    const side = bodyPart.includes('left') ? 'left' : 'right';
+    const shoulder = landmarks[`${side}Shoulder`];
+    const elbow = landmarks[`${side}Elbow`];
+    const wrist = landmarks[`${side}Wrist`];
+    
+    if (shoulder && elbow && wrist) {
+      // Calculate bend angle
+      const upperArm = new THREE.Vector3(
+        elbow.x - shoulder.x,
+        elbow.y - shoulder.y,
+        (elbow.z || 0) - (shoulder.z || 0)
+      );
+      const forearm = new THREE.Vector3(
+        wrist.x - elbow.x,
+        wrist.y - elbow.y,
+        (wrist.z || 0) - (elbow.z || 0)
+      );
+      
+      hints.bendAngle = upperArm.angleTo(forearm);
+      hints.curvature = (hints.bendAngle / Math.PI) * 0.5;
+      
+      // Calculate twist from hand orientation
+      const pinky = landmarks[`${side}Pinky`];
+      const index = landmarks[`${side}Index`];
+      if (pinky && index) {
+        const handDir = new THREE.Vector3(
+          index.x - pinky.x,
+          index.y - pinky.y,
+          0
+        );
+        hints.twist = Math.atan2(handDir.y, handDir.x);
+      }
+      
+      // Estimate surface normal
+      const armDir = forearm.normalize();
+      const up = new THREE.Vector3(0, 1, 0);
+      hints.surfaceNormal = new THREE.Vector3()
+        .crossVectors(armDir, up)
+        .normalize();
+    }
+  } else if (bodyPart === 'chest' || bodyPart === 'back') {
+    // Calculate torso curvature
+    const leftShoulder = landmarks.leftShoulder;
+    const rightShoulder = landmarks.rightShoulder;
+    const leftHip = landmarks.leftHip;
+    const rightHip = landmarks.rightHip;
+    
+    if (leftShoulder && rightShoulder && leftHip && rightHip) {
+      // Estimate chest/back curvature from shoulder-hip alignment
+      const shoulderWidth = Math.abs(rightShoulder.x - leftShoulder.x);
+      const hipWidth = Math.abs(rightHip.x - leftHip.x);
+      
+      hints.curvature = Math.abs(shoulderWidth - hipWidth) * 0.5;
+      
+      // Calculate surface normal from body orientation
+      const shoulderMid = {
+        x: (leftShoulder.x + rightShoulder.x) / 2,
+        y: (leftShoulder.y + rightShoulder.y) / 2,
+        z: ((leftShoulder.z || 0) + (rightShoulder.z || 0)) / 2
+      };
+      const hipMid = {
+        x: (leftHip.x + rightHip.x) / 2,
+        y: (leftHip.y + rightHip.y) / 2,
+        z: ((leftHip.z || 0) + (rightHip.z || 0)) / 2
+      };
+      
+      const torsoDir = new THREE.Vector3(
+        hipMid.x - shoulderMid.x,
+        hipMid.y - shoulderMid.y,
+        hipMid.z - shoulderMid.z
+      ).normalize();
+      
+      const side = new THREE.Vector3(
+        rightShoulder.x - leftShoulder.x,
+        rightShoulder.y - leftShoulder.y,
+        (rightShoulder.z || 0) - (leftShoulder.z || 0)
+      ).normalize();
+      
+      hints.surfaceNormal = new THREE.Vector3()
+        .crossVectors(side, torsoDir)
+        .normalize();
+      
+      // Flip normal for back
+      if (bodyPart === 'back') {
+        hints.surfaceNormal.multiplyScalar(-1);
+      }
+    }
+  }
+  
+  return hints;
+};
+
+// Helper function to get base transform (extract from existing switch cases)
+const getBaseTransform = (bodyPart, landmarks, detectedParts, dimensions, settings, design) => {
   const transformFunctions = {
     'left-arm': () => getArmTransform('left', landmarks, detectedParts, dimensions, settings, design),
     'right-arm': () => getArmTransform('right', landmarks, detectedParts, dimensions, settings, design),
@@ -110,7 +232,6 @@ export const calculateTattooTransform = ({
 
   return { visible: false };
 };
-
 // Auto-detect best placement
 const autoDetectTransform = ({ detectedParts, landmarks, segmentationMask, dimensions, settings, design }) => {
   const { width, height } = dimensions;
@@ -578,3 +699,4 @@ const getFootTransform = (side, landmarks, dimensions, settings, design) => {
     visible: true
   };
 };
+
