@@ -34,7 +34,6 @@ export default function Home() {
         <meta name="description" content="Create unique AI-generated tattoo designs in seconds. Try on virtual tattoos with AR before getting inked. Free to start, no artistic skills needed." />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      
       <SEO />
 
       {/* Navigation */}
@@ -180,6 +179,16 @@ export default function Home() {
                 title: 'Yours and Yours Alone',
                 desc: 'Every design is created fresh for you. No templates, no duplicates.',
                 gradient: 'from-orange-500 to-yellow-500'
+              },
+              {
+                title: 'Cover Up Old Tattoos',
+                desc: 'Transform unwanted tattoos with AI-designed cover-ups that effectively conceal the past.',
+                gradient: 'from-gray-600 to-black'
+              },
+              {
+                title: 'Fill the Gaps',
+                desc: 'Complete your tattoo collection with perfect gap fillers that tie everything together.',
+                gradient: 'from-green-500 to-teal-500'
               }
             ].map((feature, index) => (
               <motion.div
