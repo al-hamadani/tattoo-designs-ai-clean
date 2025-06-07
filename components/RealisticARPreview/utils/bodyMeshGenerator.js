@@ -543,7 +543,64 @@ export class BodyMeshGenerator {
     // This prevents constant regeneration for small movements
     return false; // Simplified for now
   }
+  // Add this method to components/RealisticARPreview/utils/bodyMeshGenerator.js
 
+generatePlanarMesh(width = 100, height = 100, curvatureX = 0.1, curvatureY = 0.05) {
+    const geometry = new THREE.BufferGeometry();
+    const segments = 32;
+    
+    const positions = [];
+    const normals = [];
+    const uvs = [];
+    const indices = [];
+    
+    // Generate vertices for a curved plane
+    for (let y = 0; y <= segments; y++) {
+      const v = y / segments;
+      for (let x = 0; x <= segments; x++) {
+        const u = x / segments;
+        
+        // Position with curvature
+        const px = (u - 0.5) * width;
+        const py = (v - 0.5) * height;
+        const pz = Math.sin(u * Math.PI) * curvatureX * width + 
+                   Math.sin(v * Math.PI) * curvatureY * height;
+        
+        positions.push(px, py, pz);
+        
+        // Normal calculation
+        const nx = -Math.cos(u * Math.PI) * Math.PI * curvatureX;
+        const ny = -Math.cos(v * Math.PI) * Math.PI * curvatureY;
+        const nz = 1;
+        const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+        
+        normals.push(nx / len, ny / len, nz / len);
+        uvs.push(u, v);
+      }
+    }
+    
+    // Generate indices
+    for (let y = 0; y < segments; y++) {
+      for (let x = 0; x < segments; x++) {
+        const a = (segments + 1) * y + x;
+        const b = (segments + 1) * (y + 1) + x;
+        const c = (segments + 1) * (y + 1) + (x + 1);
+        const d = (segments + 1) * y + (x + 1);
+        
+        indices.push(a, b, d);
+        indices.push(b, c, d);
+      }
+    }
+    
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setIndex(indices);
+    
+    geometry.computeBoundingSphere();
+    
+    return geometry;
+  }
   // Generate hand mesh with finger details
   generateHandMesh(part, landmarks, dimensions) {
     const side = part.includes('left') ? 'left' : 'right';
@@ -772,3 +829,5 @@ export class BodyMeshGenerator {
     this.meshCache.clear();
   }
  }
+
+ 

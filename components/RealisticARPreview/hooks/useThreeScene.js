@@ -56,60 +56,56 @@ export const useThreeScene = (imageUrl) => {
   }, [imageUrl]);
 
   // Update texture
-  const updateTexture = useCallback((loadedImg) => {
-    if (!meshRef.current || !meshRef.current.material) {
-      console.error('🎨 updateTexture: Mesh or material not ready.');
-      return;
-    }
-    
-    if (!loadedImg || !loadedImg.complete || loadedImg.naturalWidth === 0) {
-      console.error('🎨 updateTexture: Image not ready or invalid for texture creation:', loadedImg);
-      if (meshRef.current.material.map) meshRef.current.material.map.dispose();
-      meshRef.current.material.map = null;
+  // Find the updateTexture function and remove the incorrect lines
+const updateTexture = useCallback((loadedImg) => {
+  if (!meshRef.current || !meshRef.current.material) {
+    console.error('🎨 updateTexture: Mesh or material not ready.');
+    return;
+  }
+  
+  if (!loadedImg || !loadedImg.complete || loadedImg.naturalWidth === 0) {
+    console.error('🎨 updateTexture: Image not ready or invalid for texture creation:', loadedImg);
+    if (meshRef.current.material.map) meshRef.current.material.map.dispose();
+    meshRef.current.material.map = null;
+    meshRef.current.material.needsUpdate = true;
+    return;
+  }
+
+  console.log('🎨 Attempting to update texture with image:', loadedImg.src);
+
+  if (textureRef.current) {
+    textureRef.current.dispose();
+  }
+
+  const loader = new THREE.TextureLoader();
+  loader.load(
+    loadedImg.src,
+    (texture) => {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      
+      // Update material with proper settings for curved surfaces
+      meshRef.current.material.map = texture;
+      meshRef.current.material.color.set(0xffffff);
+      meshRef.current.material.opacity = 1.0;
+      meshRef.current.material.transparent = true;
+      meshRef.current.material.side = THREE.DoubleSide;
+      meshRef.current.material.depthWrite = false;
       meshRef.current.material.needsUpdate = true;
-      return;
+
+      textureRef.current = texture;
+
+      console.log('✅ Texture loaded and applied via TextureLoader');
+    },
+    undefined,
+    (error) => {
+      console.error('❌ TextureLoader failed:', error);
     }
+  );
+}, []);
 
-    console.log('🎨 Attempting to update texture with image:', loadedImg.src);
 
-    if (textureRef.current) {
-      textureRef.current.dispose();
-    }
-
-    const loader = new THREE.TextureLoader();
-    loader.load(
-      loadedImg.src,
-      (texture) => {
-        texture.colorSpace = THREE.SRGBColorSpace;
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
-        
-        // Update material with proper settings for curved surfaces
-        meshRef.current.material.map = texture;
-        meshRef.current.material.color.set(0xffffff);
-        meshRef.current.material.opacity = 1.0;
-        meshRef.current.material.transparent = true;
-        meshRef.current.material.side = THREE.DoubleSide;
-        meshRef.current.material.depthWrite = false;
-        meshRef.current.material.needsUpdate = true;
-
-        textureRef.current = texture;
-
-        console.log('✅ Texture loaded and applied via TextureLoader');
-      },
-      undefined,
-      (error) => {
-        console.error('❌ TextureLoader failed:', error);
-      }
-    );
-  }, []);
-
-  // Apply texture when ready
-  useEffect(() => {
-    if (isMeshReady && meshRef.current && tattooImage) {
-      updateTexture(tattooImage);
-    }
-  }, [tattooImage, isMeshReady, updateTexture]);
 
   // Initialize Three.js scene
   const initThree = useCallback((width, height) => {
@@ -220,45 +216,54 @@ export const useThreeScene = (imageUrl) => {
     }
   }, []);
 
-  // Update mesh transform with mesh hints
-  const updateMesh = useCallback((transform, bodyPart, landmarks, dimensions) => {
-    if (!meshRef.current || !transform) return;
+ // Find the updateMesh function and add the console.log there
+const updateMesh = useCallback((transform, bodyPart, landmarks, dimensions) => {
+  if (!meshRef.current || !transform) return;
+  
+  console.log('📐 Updating mesh for body part:', bodyPart, 'with hints:', transform.meshHints);
+  
+  // Update geometry if body part changed
+  if (bodyPart && bodyPart !== 'manual' && landmarks && dimensions) {
+    updateMeshForBodyPart(bodyPart, landmarks, dimensions);
+  }
+  
+  if (transform.visible) {
+    // Update position
+    meshRef.current.position.x = transform.position.x;
+    meshRef.current.position.y = transform.position.y;
+    meshRef.current.position.z = transform.position.z || 0;
     
-    if (bodyPart && bodyPart !== 'manual' && landmarks && dimensions) {
-      updateMeshForBodyPart(bodyPart, landmarks, dimensions);
-    }
+    // Update rotation
+    meshRef.current.rotation.z = transform.rotation || 0;
     
-    if (transform.visible) {
-      meshRef.current.position.x = transform.position.x;
-      meshRef.current.position.y = transform.position.y;
-      meshRef.current.position.z = transform.position.z || 0;
-
-      meshRef.current.rotation.z = transform.rotation || 0;
-
-      meshRef.current.scale.x = transform.scale.x;
-      meshRef.current.scale.y = transform.scale.y;
-      meshRef.current.scale.z = transform.scale.z || 1;
-
-      if (transform.meshHints && meshRef.current.material) {
-        if (transform.meshHints.surfaceNormal) {
-          meshRef.current.material.normalScale = new THREE.Vector2(
-            transform.meshHints.surfaceNormal.x,
-            transform.meshHints.surfaceNormal.y
-          );
-        }
-
-        if (transform.meshHints.curvature > 0.2) {
-          meshRef.current.material.displacementScale = transform.meshHints.curvature * 0.1;
-        }
+    // Update scale
+    meshRef.current.scale.x = transform.scale.x;
+    meshRef.current.scale.y = transform.scale.y;
+    meshRef.current.scale.z = transform.scale.z || 1;
+    
+    // Apply mesh hints if available
+    if (transform.meshHints && meshRef.current.material) {
+      // Update material properties based on surface normal
+      if (transform.meshHints.surfaceNormal) {
+        // Adjust material normal map or shading
+        meshRef.current.material.normalScale = new THREE.Vector2(
+          transform.meshHints.surfaceNormal.x,
+          transform.meshHints.surfaceNormal.y
+        );
       }
-
-      meshRef.current.visible = true;
-
-      console.log('📐 Mesh transform updated with hints:', transform.meshHints);
-    } else {
-      meshRef.current.visible = false;
+      
+      // Add subtle displacement based on curvature
+      if (transform.meshHints.curvature > 0.2) {
+        meshRef.current.material.displacementScale = transform.meshHints.curvature * 0.1;
+      }
     }
-  }, [updateMeshForBodyPart]);
+    
+    // Make visible
+    meshRef.current.visible = true;
+  } else {
+    meshRef.current.visible = false;
+  }
+}, [updateMeshForBodyPart]);
 
   // Cleanup
   const cleanup = useCallback(() => {

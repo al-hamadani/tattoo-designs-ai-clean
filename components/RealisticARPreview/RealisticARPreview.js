@@ -65,14 +65,17 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     initThree, updateMesh, cleanup: cleanupThree
   } = useThreeScene(imageUrl);
   const {
-    poseRef, segRef, initModels, sendFrame, modelsReady, setModelsReady
+    poseRef, segRef, initModels, sendFrame, modelsReady
   } = useMediaPipe({
-    onPoseResults: processResults,
-    onSegmentationResults: (results) => {
+    onPoseResults: useCallback((results) => {
+      console.log('📍 Pose results received');
+      processResults(results); // This should call the pose detection hook
+    }, []),
+    onSegmentationResults: useCallback((results) => {
       if (processSegmentationRef.current) {
         processSegmentationRef.current(results);
       }
-    }
+    }, [])
   });
 
   useEffect(() => {
@@ -96,22 +99,23 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
   // This enables more accurate warping where a model provides extra surface
   // information (e.g., normal map, curvature) in transform.meshHints.
   // -------------------------------------------------------------------------
-  const processSegmentation = useCallback((results) => {
+  // In processSegmentation callback, update to handle auto-detected body part:
+const processSegmentation = useCallback((results) => {
     frameCountRef.current++;
     lastCallbackRef.current = Date.now();
     callbackCountRef.current++;
-
+  
     if (!canvasRef.current || !videoRef.current) {
       processingRef.current = false;
       return;
     }
-
+  
     const ctx = canvasRef.current.getContext('2d');
     const { width, height } = canvasRef.current;
-
+  
     ctx.clearRect(0, 0, width, height);
     ctx.drawImage(videoRef.current, 0, 0, width, height);
-
+  
     if (mesh && renderer && camera && scene && threeCanvas) {
       try {
         const transform = calculateTattooTransform({
@@ -123,8 +127,39 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
           settings,
           design
         });
-
-        if (settings.bodyPart === 'manual' || transform.visible) {
+  
+        // Handle auto-detected body part
+        if (settings.bodyPart === 'auto' && transform.detectedBodyPart) {
+          // Update the actual body part for mesh generation
+          const actualBodyPart = transform.detectedBodyPart;
+          
+          if (settings.bodyPart === 'manual' || transform.visible) {
+            updateMesh(transform, actualBodyPart, landmarks, { width, height });
+            
+            if (transform.meshHints) {
+              warpToBody({ 
+                mesh, 
+                bodyPart: actualBodyPart, 
+                landmarks,
+                meshHints: transform.meshHints 
+              });
+            } else {
+              warpToBody({ mesh, bodyPart: actualBodyPart, landmarks });
+            }
+            
+            if (renderer.setClearColor) renderer.setClearColor(0x000000, 0);
+            if (renderer.clear) renderer.clear();
+  
+            renderer.render(scene, camera);
+  
+            ctx.save();
+            ctx.globalAlpha = settings.opacity;
+            ctx.globalCompositeOperation = settings.blendMode;
+            ctx.drawImage(threeCanvas, 0, 0, width, height);
+            ctx.restore();
+          }
+        } else if (settings.bodyPart === 'manual' || transform.visible) {
+          // Original code for manual mode
           if (settings.bodyPart === 'manual') {
             transform.visible = true;
             transform.position = {
@@ -139,27 +174,25 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
               z: 1
             };
           }
-
-          // Pass extended context (body part, landmarks, viewport) to mesh
+  
           updateMesh(transform, settings.bodyPart, landmarks, { width, height });
-
-          // Apply enhanced warping when mesh hints are provided
+          
           if (transform.meshHints) {
-            warpToBody({
-              mesh,
-              bodyPart: settings.bodyPart,
+            warpToBody({ 
+              mesh, 
+              bodyPart: settings.bodyPart, 
               landmarks,
-              meshHints: transform.meshHints
+              meshHints: transform.meshHints 
             });
           } else {
             warpToBody({ mesh, bodyPart: settings.bodyPart, landmarks });
           }
-
+          
           if (renderer.setClearColor) renderer.setClearColor(0x000000, 0);
           if (renderer.clear) renderer.clear();
-
+  
           renderer.render(scene, camera);
-
+  
           ctx.save();
           ctx.globalAlpha = settings.opacity;
           ctx.globalCompositeOperation = settings.blendMode;
@@ -170,7 +203,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
         console.error('❌ Render error:', err);
       }
     }
-
+    
     processingRef.current = false;
   }, [mesh, renderer, camera, scene, landmarks, detectedParts, settings, design, updateMesh, threeCanvas]);
 
@@ -403,9 +436,10 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 bg-black select-none overflow-hidden z-50 safe-area-inset"
-      onTouchMove={(e) => (dragging || pinching) && e.preventDefault()}
-    >
+    className="fixed inset-0 bg-black select-none overflow-hidden"
+    style={{ zIndex: 9999 }} // Add explicit z-index
+    onTouchMove={(e) => (dragging || pinching) && e.preventDefault()}
+  >
       <DebugInfo
         show={!isLoading}
         fps={debug.fps}

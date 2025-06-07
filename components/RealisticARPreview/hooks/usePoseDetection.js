@@ -68,11 +68,16 @@ export const usePoseDetection = () => {
   });
 
   const processResults = useCallback((results) => {
+    console.log('🎯 Processing pose results:', results);
+    
     if (!results.poseLandmarks) {
+      console.log('❌ No pose landmarks found');
       setLandmarks({});
       setDetectedParts({});
       return;
     }
+
+    console.log('✅ Pose landmarks found:', results.poseLandmarks.length);
 
     const lms = results.poseLandmarks;
     const newLandmarks = { ...landmarks };
@@ -283,6 +288,7 @@ export const usePoseDetection = () => {
 
   return {
     landmarks,
-    detectedParts
+    detectedParts,
+    processResults
   };
 };

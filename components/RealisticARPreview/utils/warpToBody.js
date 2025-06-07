@@ -1,52 +1,60 @@
 import * as THREE from 'three';
 
-/**
- * Bend the plane mesh so the tattoo follows the curvature of the body.
- * This is a lightweight approximation that adjusts vertex Z positions
- * based on the angle between adjacent body landmarks.
- */
-export const warpToBody = ({ mesh, bodyPart, landmarks }) => {
+export const warpToBody = ({ mesh, bodyPart, landmarks, meshHints }) => {
   if (!mesh || !mesh.geometry) return;
 
   const geom = mesh.geometry;
+  
+  // Check if this is a standard PlaneGeometry with parameters
+  const isPlaneGeometry = geom.parameters && 
+                         typeof geom.parameters.widthSegments !== 'undefined' && 
+                         typeof geom.parameters.heightSegments !== 'undefined';
+  
+  // For custom geometries created by BodyMeshGenerator, warping is already built-in
+  if (!isPlaneGeometry) {
+    console.log('🔄 Custom geometry detected, warping already applied');
+    
+    // Only handle UV adjustments for twist if needed
+    if (meshHints && meshHints.twist && Math.abs(meshHints.twist) > 0.1) {
+      const uvs = geom.attributes.uv;
+      if (uvs) {
+        const count = uvs.count;
+        
+        for (let i = 0; i < count; i++) {
+          const u = uvs.getX(i);
+          const v = uvs.getY(i);
+          
+          // Apply twist compensation to texture
+          const angle = meshHints.twist * (v - 0.5);
+          const newU = (u - 0.5) * Math.cos(angle) - (v - 0.5) * Math.sin(angle) + 0.5;
+          const newV = (u - 0.5) * Math.sin(angle) + (v - 0.5) * Math.cos(angle) + 0.5;
+          
+          uvs.setX(i, newU);
+          uvs.setY(i, newV);
+        }
+        
+        uvs.needsUpdate = true;
+      }
+    }
+    
+    // Update geometry bounds
+    geom.computeBoundingSphere();
+    geom.computeBoundingBox();
+    return;
+  }
 
-  // Ensure geometry has enough segments to bend
+  // Original warp code for standard PlaneGeometry
+  // Only run this for the initial plane mesh
   if (geom.parameters.widthSegments < 4 || geom.parameters.heightSegments < 4) {
     const { width = 1, height = 1 } = geom.parameters;
     mesh.geometry.dispose();
     mesh.geometry = new THREE.PlaneGeometry(width, height, 20, 20);
   }
 
+  // Rest of original warping code for standard planes...
   const positions = mesh.geometry.attributes.position;
   const count = positions.count;
-
-  // Determine bend amount based on landmark angles
-  let curvature = 0;
-  const get = (k) => landmarks?.[k];
-
-  if (bodyPart?.includes('arm')) {
-    const side = bodyPart.startsWith('left') ? 'left' : 'right';
-    const shoulder = get(`${side}Shoulder`);
-    const elbow = get(`${side}Elbow`);
-    const wrist = get(`${side}Wrist`);
-    if (shoulder && elbow && wrist) {
-      const v1 = new THREE.Vector3(shoulder.x - elbow.x, shoulder.y - elbow.y, (shoulder.z || 0) - (elbow.z || 0));
-      const v2 = new THREE.Vector3(wrist.x - elbow.x, wrist.y - elbow.y, (wrist.z || 0) - (elbow.z || 0));
-      curvature = v1.angleTo(v2) / Math.PI; // fraction of 180deg
-    }
-  } else if (bodyPart?.includes('leg')) {
-    const side = bodyPart.startsWith('left') ? 'left' : 'right';
-    const hip = get(`${side}Hip`);
-    const knee = get(`${side}Knee`);
-    const ankle = get(`${side}Ankle`);
-    if (hip && knee && ankle) {
-      const v1 = new THREE.Vector3(hip.x - knee.x, hip.y - knee.y, (hip.z || 0) - (knee.z || 0));
-      const v2 = new THREE.Vector3(ankle.x - knee.x, ankle.y - knee.y, (ankle.z || 0) - (knee.z || 0));
-      curvature = v1.angleTo(v2) / Math.PI;
-    }
-  } else {
-    curvature = 0.2; // small default bend
-  }
+  const curvature = meshHints?.curvature || 0.2;
 
   for (let i = 0; i < count; i++) {
     const x = positions.getX(i);

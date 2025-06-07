@@ -19,8 +19,14 @@ const RealisticARPreview = dynamic(
   { ssr: false }
 );
 
+import { useRouter } from 'next/router';
+
+
+
 
 export default function Generate() {
+  // Inside your component
+const router = useRouter();
   const [prompt, setPrompt] = useState('')
   const [primaryStyle, setPrimaryStyle] = useState('traditional')
   const [secondaryStyle, setSecondaryStyle] = useState('none')
@@ -268,10 +274,12 @@ export default function Generate() {
     setSelectedDesign(design)
     setShowSocialSharing(true)
   }
-  const handleARClick = (design) => {
-    setSelectedDesign(design)
-    setShowAR(true)
-  }
+  
+
+// Replace the AR button click handler
+const handleARClick = (design) => {
+  router.push(`/ar?image=${encodeURIComponent(design.url)}`);
+};
 
   return (
     <>
@@ -706,15 +714,7 @@ export default function Generate() {
             )}
           </AnimatePresence>
           
-{selectedDesign && (
-  <div className={showAR ? 'fixed inset-0 z-50' : 'hidden'}>
-    <RealisticARPreview
-      imageUrl={selectedDesign.url}
-      design={selectedDesign}
-      onClose={() => setShowAR(false)}
-    />
-  </div>
-)}
+
 
         
         </div>

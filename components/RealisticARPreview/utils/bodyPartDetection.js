@@ -235,24 +235,38 @@ const getBaseTransform = (bodyPart, landmarks, detectedParts, dimensions, settin
 // Auto-detect best placement
 const autoDetectTransform = ({ detectedParts, landmarks, segmentationMask, dimensions, settings, design }) => {
   const { width, height } = dimensions;
+  
+  console.log('🎯 Auto-detecting best body part...');
+  console.log('Detected parts:', detectedParts);
+  
   const candidates = [
     { key: 'rightArm',  landmarks: ['rightShoulder','rightElbow','rightWrist'], transform: () => getArmTransform('right', landmarks, detectedParts, dimensions, settings, design) },
     { key: 'leftArm',   landmarks: ['leftShoulder','leftElbow','leftWrist'],  transform: () => getArmTransform('left', landmarks, detectedParts, dimensions, settings, design) },
     { key: 'chest',     landmarks: ['leftShoulder','rightShoulder','leftHip','rightHip'], transform: () => getChestTransform(landmarks, detectedParts, dimensions, settings, design) },
-    { key: 'back',      landmarks: ['leftShoulder','rightShoulder','leftHip','rightHip'], transform: () => getBackTransform(landmarks, detectedParts, dimensions, settings, design) },
     { key: 'rightLeg',  landmarks: ['rightHip','rightKnee','rightAnkle'], transform: () => getLegTransform('right', landmarks, detectedParts, dimensions, settings, design) },
     { key: 'leftLeg',   landmarks: ['leftHip','leftKnee','leftAnkle'],  transform: () => getLegTransform('left', landmarks, detectedParts, dimensions, settings, design) },
-    { key: 'neck',      landmarks: ['nose','leftShoulder','rightShoulder'], transform: () => getNeckTransform(landmarks, dimensions, settings, design) },
-    { key: 'face',      landmarks: ['nose','leftEye','rightEye'], transform: () => getFaceTransform(landmarks, detectedParts, dimensions, settings, design) }
   ];
 
   candidates.forEach(c => {
     c.score = scoreBodyPart({ keys: c.landmarks, landmarks, mask: segmentationMask, width, height });
+    console.log(`Score for ${c.key}: ${c.score}`);
   });
+  
   candidates.sort((a,b) => b.score - a.score);
   const best = candidates[0];
-  if (!best || best.score < 0.25) return { visible: false };
-  return best.transform();
+  
+  if (!best || best.score < 0.25) {
+    console.log('❌ No suitable body part found for auto-detect');
+    return { visible: false };
+  }
+  
+  console.log(`✅ Auto-detected best body part: ${best.key} with score ${best.score}`);
+  
+  const transform = best.transform();
+  // Add the detected body part key to the transform
+  transform.detectedBodyPart = best.key.replace('Arm', '-arm').replace('Leg', '-leg').toLowerCase();
+  
+  return transform;
 };
 
 // Arm transforms
