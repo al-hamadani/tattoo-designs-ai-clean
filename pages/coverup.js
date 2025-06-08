@@ -99,8 +99,8 @@ export default function CoverUp() {
     maskCtx.fill()
     
     // Visual feedback on main canvas
-    ctx.globalAlpha = 0.3
-    ctx.fillStyle = drawingMode === 'draw' ? '#3B82F6' : '#EF4444'
+    ctx.globalAlpha = 0.4;
+    ctx.fillStyle = drawingMode === 'draw' ? '#3B82F6' : '#ffffff';
     ctx.beginPath()
     ctx.arc(scaledX, scaledY, brushSize * scaleX, 0, Math.PI * 2)
     ctx.fill()
@@ -164,10 +164,12 @@ export default function CoverUp() {
       setMaskedArea(maskData)
       
       // Enhanced prompt for cover-up designs
-      const coverUpPrompt = `professional tattoo design for cover-up, ${selectedStyle} style, 
+      const basePrompt = customPrompt.trim() || 'professional cover-up tattoo design'
+      const coverUpPrompt = `${basePrompt}, ${selectedStyle} style, 
         bold black ink with heavy shading, dense pattern work, high contrast, 
         designed to effectively cover existing tattoo, intricate details, 
-        complete coverage design, tattoo stencil ready, white background`
+        complete coverage design, tattoo stencil ready, white background,
+        no text, no words, no letters, design only`
       
       const response = await fetch('/api/generate-tattoo', {
         method: 'POST',
@@ -232,8 +234,13 @@ export default function CoverUp() {
             <div className="hidden md:flex items-center gap-8">
               <Link href="/generate" className="hover:text-blue-600 transition-colors">Generate</Link>
               <Link href="/coverup" className="text-blue-600 font-medium">Cover Up</Link>
+              <Link href="/gapfiller" className="hover:text-blue-600 transition-colors">Gap Filler</Link>
               <Link href="/styles" className="hover:text-blue-600 transition-colors">Styles</Link>
+              <Link href="/how-it-works" className="hover:text-blue-600 transition-colors">How It Works</Link>
               <Link href="/gallery" className="hover:text-blue-600 transition-colors">Gallery</Link>
+              <Link href="/generate" className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-all hover:scale-105">
+                Try Free
+              </Link>
             </div>
           </div>
         </div>
@@ -411,6 +418,24 @@ export default function CoverUp() {
                   className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"
                 >
                   <h3 className="text-lg font-semibold mb-4">Step 2: Choose Cover-Up Style</h3>
+                  
+                  {/* Text Input for Design Description */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Describe your cover-up design (optional)
+                    </label>
+                    <textarea
+                      value={customPrompt}
+                      onChange={(e) => setCustomPrompt(e.target.value)}
+                      placeholder="e.g., 'phoenix rising from ashes' or 'geometric mandala with flowers'"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors resize-none"
+                      rows={2}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Leave blank for AI to create optimal cover-up design based on the marked area
+                    </p>
+                  </div>
+                  
                   <div className="grid grid-cols-2 gap-3">
                     {tattooStyles.map(style => (
                       <button

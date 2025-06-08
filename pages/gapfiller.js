@@ -137,7 +137,11 @@ export default function GapFiller() {
               <Link href="/coverup" className="hover:text-blue-600 transition-colors">Cover Up</Link>
               <Link href="/gapfiller" className="text-blue-600 font-medium">Gap Filler</Link>
               <Link href="/styles" className="hover:text-blue-600 transition-colors">Styles</Link>
+              <Link href="/how-it-works" className="hover:text-blue-600 transition-colors">How It Works</Link>
               <Link href="/gallery" className="hover:text-blue-600 transition-colors">Gallery</Link>
+              <Link href="/generate" className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-all hover:scale-105">
+                Try Free
+              </Link>
             </div>
           </div>
         </div>

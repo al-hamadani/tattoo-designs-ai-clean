@@ -292,24 +292,22 @@ const handleARClick = (design) => {
         description="Create custom tattoo designs with AI. Choose from 20+ styles including minimalist, traditional, geometric, and more. Free to try!"
         keywords="tattoo generator, AI tattoo design, custom tattoo, tattoo creator online"
       />
+      {/* Navigation - GENERATE PAGE */}
       <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
             <Link href="/" className="text-2xl font-bold tracking-tight">
               TattooDesignsAI
             </Link>
-            <div className="flex items-center gap-6">
-              <button className="text-gray-600 hover:text-gray-900 transition-colors">
-                <Heart className="w-5 h-5" />
-                {favorites.length > 0 && (
-                  <span className="ml-1 text-sm">{favorites.length}</span>
-                )}
-              </button>
-              <Link href="/gallery" className="text-gray-600 hover:text-gray-900 transition-colors">
-                Gallery
-              </Link>
-              <Link href="/styles" className="text-gray-600 hover:text-gray-900 transition-colors">
-                Styles
+            <div className="hidden md:flex items-center gap-8">
+              <Link href="/generate" className="text-blue-600 font-medium">Generate</Link>
+              <Link href="/coverup" className="hover:text-blue-600 transition-colors">Cover Up</Link>
+              <Link href="/gapfiller" className="hover:text-blue-600 transition-colors">Gap Filler</Link>
+              <Link href="/styles" className="hover:text-blue-600 transition-colors">Styles</Link>
+              <Link href="/how-it-works" className="hover:text-blue-600 transition-colors">How It Works</Link>
+              <Link href="/gallery" className="hover:text-blue-600 transition-colors">Gallery</Link>
+              <Link href="/generate" className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-all hover:scale-105">
+                Try Free
               </Link>
             </div>
           </div>
