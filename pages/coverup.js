@@ -218,7 +218,7 @@ export default function CoverUp() {
                     <DrawingCanvas
                       ref={drawingCanvasRef}
                       image={uploadedImage}
-                      maskColor="#EF4444"
+                      maskColor="#3B82F6"
                       eraseColor="#ffffff"
                     />
                     
