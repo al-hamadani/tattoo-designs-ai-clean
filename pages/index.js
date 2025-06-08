@@ -34,7 +34,6 @@ export default function Home() {
         <meta name="description" content="Create unique AI-generated tattoo designs in seconds. Try on virtual tattoos with AR before getting inked. Free to start, no artistic skills needed." />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      
       <SEO />
 
       {/* Navigation */}
@@ -46,9 +45,11 @@ export default function Home() {
             </Link>
             <div className="hidden md:flex items-center gap-8">
               <Link href="/generate" className="hover:text-blue-600 transition-colors">Generate</Link>
-              <Link href="/styles" className="hover:text-blue-600 transition-colors">Styles</Link>
+              <Link href="/coverup" className="hover:text-blue-600 transition-colors">CoverUp</Link>
+              <Link href="/gapfiller" className="hover:text-blue-600 transition-colors">GapFiller</Link>
               <Link href="/how-it-works" className="hover:text-blue-600 transition-colors">How It Works</Link>
               <Link href="/gallery" className="hover:text-blue-600 transition-colors">Gallery</Link>
+
               <button className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-all hover:scale-105">
                 Try Free
               </button>
@@ -180,6 +181,16 @@ export default function Home() {
                 title: 'Yours and Yours Alone',
                 desc: 'Every design is created fresh for you. No templates, no duplicates.',
                 gradient: 'from-orange-500 to-yellow-500'
+              },
+              {
+                title: 'Cover Up Old Tattoos',
+                desc: 'Transform unwanted tattoos with AI-designed cover-ups that effectively conceal the past.',
+                gradient: 'from-gray-600 to-black'
+              },
+              {
+                title: 'Fill the Gaps',
+                desc: 'Complete your tattoo collection with perfect gap fillers that tie everything together.',
+                gradient: 'from-green-500 to-teal-500'
               }
             ].map((feature, index) => (
               <motion.div

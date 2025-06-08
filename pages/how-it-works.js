@@ -123,7 +123,7 @@ export default function HowItWorks() {
         <meta name="description" content="Learn how to create your perfect tattoo design in 5 easy steps. From idea to ink-ready artwork with AI and AR technology." />
       </Head>
 
-      {/* Navigation */}
+      {/* Navigation - HOW IT WORKS PAGE */}
       <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
@@ -132,6 +132,8 @@ export default function HowItWorks() {
             </Link>
             <div className="hidden md:flex items-center gap-8">
               <Link href="/generate" className="hover:text-blue-600 transition-colors">Generate</Link>
+              <Link href="/coverup" className="hover:text-blue-600 transition-colors">Cover Up</Link>
+              <Link href="/gapfiller" className="hover:text-blue-600 transition-colors">Gap Filler</Link>
               <Link href="/styles" className="hover:text-blue-600 transition-colors">Styles</Link>
               <Link href="/how-it-works" className="text-blue-600 font-medium">How It Works</Link>
               <Link href="/gallery" className="hover:text-blue-600 transition-colors">Gallery</Link>

@@ -96,7 +96,7 @@ export default function Gallery() {
         <meta name="description" content="Explore thousands of AI-generated tattoo designs from our community. Get inspired and find your perfect tattoo style." />
       </Head>
 
-      {/* Navigation */}
+      {/* Navigation - GALLERY PAGE */}
       <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
@@ -105,6 +105,8 @@ export default function Gallery() {
             </Link>
             <div className="hidden md:flex items-center gap-8">
               <Link href="/generate" className="hover:text-blue-600 transition-colors">Generate</Link>
+              <Link href="/coverup" className="hover:text-blue-600 transition-colors">Cover Up</Link>
+              <Link href="/gapfiller" className="hover:text-blue-600 transition-colors">Gap Filler</Link>
               <Link href="/styles" className="hover:text-blue-600 transition-colors">Styles</Link>
               <Link href="/how-it-works" className="hover:text-blue-600 transition-colors">How It Works</Link>
               <Link href="/gallery" className="text-blue-600 font-medium">Gallery</Link>
