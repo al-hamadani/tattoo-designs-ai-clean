@@ -45,9 +45,11 @@ export default function Home() {
             </Link>
             <div className="hidden md:flex items-center gap-8">
               <Link href="/generate" className="hover:text-blue-600 transition-colors">Generate</Link>
-              <Link href="/styles" className="hover:text-blue-600 transition-colors">Styles</Link>
+              <Link href="/coverup" className="hover:text-blue-600 transition-colors">CoverUp</Link>
+              <Link href="/gapfiller" className="hover:text-blue-600 transition-colors">GapFiller</Link>
               <Link href="/how-it-works" className="hover:text-blue-600 transition-colors">How It Works</Link>
               <Link href="/gallery" className="hover:text-blue-600 transition-colors">Gallery</Link>
+
               <button className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-all hover:scale-105">
                 Try Free
               </button>

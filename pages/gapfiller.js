@@ -8,14 +8,17 @@ import {
 } from 'lucide-react'
 import SEO from '../components/SEO'
 import DrawingCanvas from '../components/DrawingCanvas'
+import CameraCapture from '../components/CameraCapture'
 
 export default function GapFiller() {
   const [uploadedImage, setUploadedImage] = useState(null)
   const [selectedStyle, setSelectedStyle] = useState('minimalist')
   const [selectedTheme, setSelectedTheme] = useState('floral')
+  const [customPrompt, setCustomPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedDesigns, setGeneratedDesigns] = useState([])
   const [error, setError] = useState('')
+  const [showCamera, setShowCamera] = useState(false)
   
   const fileInputRef = useRef(null)
   const drawingCanvasRef = useRef(null)
@@ -44,10 +47,12 @@ export default function GapFiller() {
       const maskData = drawingCanvasRef.current.getMaskData()
       
       // Enhanced prompt for gap filler designs
-      const gapFillerPrompt = `${selectedTheme} themed gap filler tattoo design, ${selectedStyle} style, 
+      const basePrompt = customPrompt.trim() || `${selectedTheme} themed gap filler elements`
+      const gapFillerPrompt = `${basePrompt}, ${selectedStyle} style tattoo design, 
         small detailed elements, perfect for filling spaces between existing tattoos, 
         complementary design, tattoo filler piece, clean design, white background, 
-        suitable for small spaces, cohesive with existing tattoos`
+        suitable for small spaces, cohesive with existing tattoos,
+        no text, no words, no letters, design only`
       
       // Generate multiple variations
       const variations = []
@@ -187,7 +192,10 @@ export default function GapFiller() {
                           Upload Photo
                         </div>
                       </label>
-                      <button className="bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2">
+                      <button 
+                        onClick={() => setShowCamera(true)}
+                        className="bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+                      >
                         <Camera className="w-5 h-5" />
                         Take Photo
                       </button>
@@ -207,8 +215,8 @@ export default function GapFiller() {
                     <DrawingCanvas
                       ref={drawingCanvasRef}
                       image={uploadedImage}
-                      maskColor="#10B981"
-                      eraseColor="#EF4444"
+                      maskColor="#3B82F6"
+                      eraseColor="#ffffff"
                     />
                     
                     <button
@@ -235,6 +243,23 @@ export default function GapFiller() {
                   <h3 className="text-lg font-semibold mb-4">Step 2: Choose Theme & Style</h3>
                   
                   <div className="space-y-4">
+                    {/* Text Input for Design Description */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Describe your gap filler design (optional)
+                      </label>
+                      <textarea
+                        value={customPrompt}
+                        onChange={(e) => setCustomPrompt(e.target.value)}
+                        placeholder="e.g., 'small stars and dots' or 'tiny flowers and leaves'"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors resize-none"
+                        rows={2}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Leave blank to use theme-based designs
+                      </p>
+                    </div>
+                    
                     <div>
                       <label className="text-sm font-medium text-gray-700 mb-2 block">Theme</label>
                       <div className="grid grid-cols-4 gap-2">
@@ -387,6 +412,18 @@ export default function GapFiller() {
           </div>
         </div>
       </main>
+      
+      {/* Camera Modal */}
+      {showCamera && (
+        <CameraCapture
+          onCapture={(image) => {
+            setUploadedImage(image)
+            setGeneratedDesigns([])
+            setShowCamera(false)
+          }}
+          onClose={() => setShowCamera(false)}
+        />
+      )}
     </>
   )
 }
