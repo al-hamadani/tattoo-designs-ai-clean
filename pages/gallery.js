@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Filter, Grid3X3, Square, ChevronDown } from 'lucide-react'
 import { CardSkeleton } from '../components/LoadingStates'
 import LazyImage from '../components/LazyImage'
