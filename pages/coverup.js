@@ -9,6 +9,7 @@ import {
 import SEO from '../components/SEO'
 import CameraCapture from '../components/CameraCapture'
 
+
 export default function CoverUp() {
   const [uploadedImage, setUploadedImage] = useState(null)
   const [isDrawing, setIsDrawing] = useState(false)
@@ -19,6 +20,7 @@ export default function CoverUp() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedDesigns, setGeneratedDesigns] = useState([])
   const [error, setError] = useState('')
+  const [customPrompt, setCustomPrompt] = useState('') // ← THIS WAS MISSING!
   
   const [showCamera, setShowCamera] = useState(false)
   
