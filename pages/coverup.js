@@ -1,57 +1,26 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { 
-  Upload, Camera, Eraser, Pen, RotateCcw, Download, 
-  ArrowRight, Info, Sparkles, Loader2, Image as ImageIcon
+  Upload, Camera, Sparkles, Loader2, Image as ImageIcon,
+  Info, Download
 } from 'lucide-react'
 import SEO from '../components/SEO'
+import DrawingCanvas from '../components/DrawingCanvas'
 import CameraCapture from '../components/CameraCapture'
 
 export default function CoverUp() {
   const [uploadedImage, setUploadedImage] = useState(null)
-  const [isDrawing, setIsDrawing] = useState(false)
-  const [drawingMode, setDrawingMode] = useState('draw') // 'draw' or 'erase'
-  const [brushSize, setBrushSize] = useState(20)
-  const [maskedArea, setMaskedArea] = useState(null)
   const [selectedStyle, setSelectedStyle] = useState('blackwork')
+  const [customPrompt, setCustomPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
-  const [generatedDesigns, setGeneratedDesigns] = useState([])
+  const [generatedDesign, setGeneratedDesign] = useState(null) // Changed to single design
   const [error, setError] = useState('')
-  
   const [showCamera, setShowCamera] = useState(false)
   
-  const canvasRef = useRef(null)
-  const imageRef = useRef(null)
   const fileInputRef = useRef(null)
-  const maskCanvasRef = useRef(null)
-
-  // Initialize canvas when image is loaded
-  useEffect(() => {
-    if (uploadedImage && canvasRef.current && imageRef.current) {
-      const canvas = canvasRef.current
-      const ctx = canvas.getContext('2d')
-      const img = imageRef.current
-      
-      // Set canvas size to match image
-      canvas.width = img.width
-      canvas.height = img.height
-      
-      // Draw image on canvas
-      ctx.drawImage(img, 0, 0)
-      
-      // Initialize mask canvas
-      if (maskCanvasRef.current) {
-        const maskCanvas = maskCanvasRef.current
-        maskCanvas.width = img.width
-        maskCanvas.height = img.height
-        const maskCtx = maskCanvas.getContext('2d')
-        maskCtx.fillStyle = 'black'
-        maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height)
-      }
-    }
-  }, [uploadedImage])
+  const drawingCanvasRef = useRef(null)
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
@@ -59,109 +28,22 @@ export default function CoverUp() {
       const reader = new FileReader()
       reader.onload = (event) => {
         setUploadedImage(event.target.result)
-        setGeneratedDesigns([])
-        setMaskedArea(null)
+        setGeneratedDesign(null) // Reset to null for single design
       }
       reader.readAsDataURL(file)
     }
   }
 
-  const startDrawing = (e) => {
-    if (!canvasRef.current) return
-    setIsDrawing(true)
-    
-    const canvas = canvasRef.current
-    const rect = canvas.getBoundingClientRect()
-    const x = (e.clientX || e.touches[0].clientX) - rect.left
-    const y = (e.clientY || e.touches[0].clientY) - rect.top
-    
-    draw(x, y)
-  }
-
-  const draw = (x, y) => {
-    if (!isDrawing || !canvasRef.current || !maskCanvasRef.current) return
-    
-    const maskCanvas = maskCanvasRef.current
-    const maskCtx = maskCanvas.getContext('2d')
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    
-    // Scale coordinates
-    const scaleX = maskCanvas.width / canvas.offsetWidth
-    const scaleY = maskCanvas.height / canvas.offsetHeight
-    const scaledX = x * scaleX
-    const scaledY = y * scaleY
-    
-    maskCtx.globalCompositeOperation = drawingMode === 'draw' ? 'source-over' : 'destination-out'
-    maskCtx.fillStyle = 'white'
-    maskCtx.beginPath()
-    maskCtx.arc(scaledX, scaledY, brushSize * scaleX, 0, Math.PI * 2)
-    maskCtx.fill()
-    
-    // Visual feedback on main canvas
-    ctx.globalAlpha = 0.4;
-    ctx.fillStyle = drawingMode === 'draw' ? '#3B82F6' : '#ffffff';
-    ctx.beginPath()
-    ctx.arc(scaledX, scaledY, brushSize * scaleX, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.globalAlpha = 1
-  }
-
-  const stopDrawing = () => {
-    setIsDrawing(false)
-  }
-
-  const handleMouseMove = (e) => {
-    if (!isDrawing || !canvasRef.current) return
-    
-    const canvas = canvasRef.current
-    const rect = canvas.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    
-    draw(x, y)
-  }
-
-  const handleTouchMove = (e) => {
-    if (!isDrawing || !canvasRef.current) return
-    e.preventDefault()
-    
-    const canvas = canvasRef.current
-    const rect = canvas.getBoundingClientRect()
-    const x = e.touches[0].clientX - rect.left
-    const y = e.touches[0].clientY - rect.top
-    
-    draw(x, y)
-  }
-
-  const clearDrawing = () => {
-    if (!canvasRef.current || !imageRef.current || !maskCanvasRef.current) return
-    
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    ctx.drawImage(imageRef.current, 0, 0)
-    
-    const maskCanvas = maskCanvasRef.current
-    const maskCtx = maskCanvas.getContext('2d')
-    maskCtx.fillStyle = 'black'
-    maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height)
-    
-    setMaskedArea(null)
-  }
-
   const generateCoverUp = async () => {
-    if (!maskCanvasRef.current) return
+    if (!drawingCanvasRef.current) return
     
     setIsGenerating(true)
     setError('')
-    setGeneratedDesigns([])
+    setGeneratedDesign(null)
     
     try {
-      // Get mask data
-      const maskCanvas = maskCanvasRef.current
-      const maskData = maskCanvas.toDataURL('image/png')
-      setMaskedArea(maskData)
+      // Get mask data from drawing canvas
+      const maskData = drawingCanvasRef.current.getMaskData()
       
       // Enhanced prompt for cover-up designs
       const basePrompt = customPrompt.trim() || 'professional cover-up tattoo design'
@@ -180,23 +62,41 @@ export default function CoverUp() {
           complexity: 'complex',
           placement: 'custom-coverup',
           size: 'custom',
-          maskData: maskData // Include mask for future API enhancement
+          maskData: maskData
         })
       })
       
       const data = await response.json()
       if (!data.success) throw new Error(data.message || 'Generation failed')
       
-      setGeneratedDesigns([{
+      // Set single design instead of array
+      setGeneratedDesign({
         id: Date.now(),
         url: data.imageURL,
-        style: selectedStyle
-      }])
+        style: selectedStyle,
+        prompt: basePrompt
+      })
     } catch (err) {
       console.error('Generation error:', err)
       setError(err.message || 'Failed to generate cover-up design')
     } finally {
       setIsGenerating(false)
+    }
+  }
+
+  const downloadImage = async (imageUrl, design) => {
+    try {
+      const response = await fetch(imageUrl)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `coverup-${design.style}-${Date.now()}.jpg`
+      link.click()
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Download failed:', error)
+      setError('Failed to download image')
     }
   }
 
@@ -306,100 +206,26 @@ export default function CoverUp() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
-                      <Info className="w-5 h-5 text-yellow-600 mt-0.5" />
-                      <p className="text-sm text-yellow-800">
-                        Use the pen tool to mark the exact area you want to cover. 
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+                      <Info className="w-5 h-5 text-blue-600 mt-0.5" />
+                      <p className="text-sm text-blue-800">
+                        Draw over the exact area you want to cover. 
                         Be generous with the coverage area for best results.
                       </p>
                     </div>
                     
-                    {/* Drawing Tools */}
-                    <div className="flex items-center gap-4 mb-4">
-                      <button
-                        onClick={() => setDrawingMode('draw')}
-                        className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                          drawingMode === 'draw' 
-                            ? 'bg-blue-600 text-white' 
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        <Pen className="w-4 h-4" />
-                        Draw
-                      </button>
-                      <button
-                        onClick={() => setDrawingMode('erase')}
-                        className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                          drawingMode === 'erase' 
-                            ? 'bg-red-600 text-white' 
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        <Eraser className="w-4 h-4" />
-                        Erase
-                      </button>
-                      <div className="flex items-center gap-2 ml-auto">
-                        <label className="text-sm text-gray-600">Brush Size:</label>
-                        <input
-                          type="range"
-                          min="5"
-                          max="50"
-                          value={brushSize}
-                          onChange={(e) => setBrushSize(Number(e.target.value))}
-                          className="w-24"
-                        />
-                        <span className="text-sm text-gray-600 w-8">{brushSize}</span>
-                      </div>
-                      <button
-                        onClick={clearDrawing}
-                        className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
-                        title="Clear drawing"
-                      >
-                        <RotateCcw className="w-5 h-5" />
-                      </button>
-                    </div>
-                    
-                    {/* Canvas */}
-                    <div className="relative bg-gray-100 rounded-lg overflow-hidden">
-                      <img
-                        ref={imageRef}
-                        src={uploadedImage}
-                        alt="Uploaded tattoo"
-                        className="hidden"
-                        onLoad={() => {
-                          // Trigger canvas setup
-                          if (canvasRef.current && imageRef.current) {
-                            const canvas = canvasRef.current
-                            const img = imageRef.current
-                            canvas.width = img.width
-                            canvas.height = img.height
-                            const ctx = canvas.getContext('2d')
-                            ctx.drawImage(img, 0, 0)
-                          }
-                        }}
-                      />
-                      <canvas
-                        ref={canvasRef}
-                        className="max-w-full h-auto cursor-crosshair"
-                        onMouseDown={startDrawing}
-                        onMouseMove={handleMouseMove}
-                        onMouseUp={stopDrawing}
-                        onMouseLeave={stopDrawing}
-                        onTouchStart={startDrawing}
-                        onTouchMove={handleTouchMove}
-                        onTouchEnd={stopDrawing}
-                      />
-                      <canvas
-                        ref={maskCanvasRef}
-                        className="hidden"
-                      />
-                    </div>
+                    {/* Drawing Canvas */}
+                    <DrawingCanvas
+                      ref={drawingCanvasRef}
+                      image={uploadedImage}
+                      maskColor="#3B82F6"
+                      eraseColor="#ffffff"
+                    />
                     
                     <button
                       onClick={() => {
                         setUploadedImage(null)
-                        setGeneratedDesigns([])
-                        setMaskedArea(null)
+                        setGeneratedDesign(null)
                       }}
                       className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
                     >
@@ -506,68 +332,66 @@ export default function CoverUp() {
               >
                 <h3 className="text-lg font-semibold mb-4">Your Cover-Up Design</h3>
                 
-                {generatedDesigns.length > 0 ? (
+                {generatedDesign ? (
                   <div className="space-y-4">
-                    {generatedDesigns.map(design => (
-                      <div key={design.id} className="space-y-4">
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <img
+                        src={generatedDesign.url}
+                        alt="Generated cover-up design"
+                        className="w-full h-auto rounded-lg"
+                      />
+                    </div>
+                    
+                    {/* Preview on your tattoo */}
+                    {uploadedImage && (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">
+                          Preview on your tattoo:
+                        </h4>
                         <div className="bg-gray-50 rounded-lg p-4">
-                          <img
-                            src={design.url}
-                            alt="Generated cover-up design"
-                            className="w-full h-auto rounded-lg"
-                          />
-                        </div>
-                        
-                        {/* Overlay Preview */}
-                        {maskedArea && (
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-700 mb-2">
-                              Preview on your tattoo:
-                            </h4>
-                            <div className="relative bg-gray-100 rounded-lg overflow-hidden">
-                              <img
-                                src={uploadedImage}
-                                alt="Original"
-                                className="w-full h-auto"
-                              />
-                              <img
-                                src={design.url}
-                                alt="Overlay"
-                                className="absolute inset-0 w-full h-full object-contain opacity-70 mix-blend-multiply"
-                                style={{
-                                  maskImage: `url(${maskedArea})`,
-                                  WebkitMaskImage: `url(${maskedArea})`,
-                                  maskSize: 'cover',
-                                  WebkitMaskSize: 'cover'
-                                }}
-                              />
-                            </div>
+                          <div className="relative bg-gray-100 rounded-lg overflow-hidden">
+                            <img
+                              src={uploadedImage}
+                              alt="Original"
+                              className="w-full h-auto"
+                            />
+                            <img
+                              src={generatedDesign.url}
+                              alt="Cover-up overlay"
+                              className="absolute inset-0 w-full h-full object-contain opacity-80 mix-blend-multiply"
+                            />
                           </div>
-                        )}
-                        
-                        <div className="flex gap-3">
-                          <button className="flex-1 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2">
-                            <Download className="w-4 h-4" />
-                            Download Design
-                          </button>
-                          <button className="flex-1 py-3 border-2 border-gray-200 rounded-lg hover:border-gray-300 transition-colors font-medium">
-                            Try Another Style
-                          </button>
-                        </div>
-                        
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                          <h4 className="font-medium text-blue-900 mb-2">
-                            Cover-Up Tips:
-                          </h4>
-                          <ul className="text-sm text-blue-800 space-y-1">
-                            <li>• This design uses {selectedStyle} style for maximum coverage</li>
-                            <li>• Dark, bold designs work best for covering existing tattoos</li>
-                            <li>• Consult with your artist about feasibility</li>
-                            <li>• Multiple sessions may be needed for complete coverage</li>
-                          </ul>
                         </div>
                       </div>
-                    ))}
+                    )}
+                    
+                    <div className="flex gap-3">
+                      <button 
+                        onClick={() => downloadImage(generatedDesign.url, generatedDesign)}
+                        className="flex-1 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+                      >
+                        <Download className="w-4 h-4" />
+                        Download Design
+                      </button>
+                      <button 
+                        onClick={generateCoverUp}
+                        className="flex-1 py-3 border-2 border-gray-200 rounded-lg hover:border-gray-300 transition-colors font-medium"
+                      >
+                        Try Another Style
+                      </button>
+                    </div>
+                    
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h4 className="font-medium text-blue-900 mb-2">
+                        Cover-Up Tips:
+                      </h4>
+                      <ul className="text-sm text-blue-800 space-y-1">
+                        <li>• This design uses {selectedStyle} style for maximum coverage</li>
+                        <li>• Dark, bold designs work best for covering existing tattoos</li>
+                        <li>• Consult with your artist about feasibility</li>
+                        <li>• Multiple sessions may be needed for complete coverage</li>
+                      </ul>
+                    </div>
                   </div>
                 ) : (
                   <div className="text-center py-12 text-gray-400">
@@ -587,8 +411,7 @@ export default function CoverUp() {
         <CameraCapture
           onCapture={(image) => {
             setUploadedImage(image)
-            setGeneratedDesigns([])
-            setMaskedArea(null)
+            setGeneratedDesign(null)
             setShowCamera(false)
           }}
           onClose={() => setShowCamera(false)}

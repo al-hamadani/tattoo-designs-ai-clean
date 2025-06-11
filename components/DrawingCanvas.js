@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react'
-import { Pen, Eraser, RotateCcw, Download } from 'lucide-react'
+import { Pen, RotateCcw, Download } from 'lucide-react'
 
 const DrawingCanvas = forwardRef(({
   image,
@@ -14,10 +14,10 @@ const DrawingCanvas = forwardRef(({
   const maskCanvasRef = useRef(null)
   const imageRef = useRef(null)
   const [isDrawing, setIsDrawing] = useState(false)
-  const [drawingMode, setDrawingMode] = useState('draw')
   const [brushSize, setBrushSize] = useState(initialBrushSize)
   const [history, setHistory] = useState([])
   const [historyStep, setHistoryStep] = useState(-1)
+  const [lastPoint, setLastPoint] = useState(null)
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
@@ -42,17 +42,22 @@ const DrawingCanvas = forwardRef(({
       const ctx = canvas.getContext('2d')
       canvas.width = img.width
       canvas.height = img.height
+      
+      // Draw the original image
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
       ctx.drawImage(img, 0, 0)
 
+      // Initialize mask canvas with transparent background
       const maskCanvas = maskCanvasRef.current
       maskCanvas.width = img.width
       maskCanvas.height = img.height
       const maskCtx = maskCanvas.getContext('2d')
-      maskCtx.fillStyle = 'black'
-      maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height)
+      
+      // Clear mask canvas (transparent by default)
+      maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height)
 
-      setHistory([])
-      setHistoryStep(-1)
+      // Save initial state
+      saveToHistory()
     }
     img.src = image
   }, [image])
@@ -80,12 +85,14 @@ const DrawingCanvas = forwardRef(({
 
   const saveToHistory = () => {
     const maskCanvas = maskCanvasRef.current
+    if (!maskCanvas) return
+    
     const maskData = maskCanvas.toDataURL()
 
     const newHistory = history.slice(0, historyStep + 1)
     newHistory.push(maskData)
 
-    if (newHistory.length > 50) newHistory.shift()
+    if (newHistory.length > 20) newHistory.shift()
 
     setHistory(newHistory)
     setHistoryStep(newHistory.length - 1)
@@ -123,16 +130,20 @@ const DrawingCanvas = forwardRef(({
     e.preventDefault()
     setIsDrawing(true)
     const coords = getCoordinates(e)
-    draw(coords.x, coords.y)
+    setLastPoint(coords)
+    
+    // Draw a single dot
+    drawDot(coords.x, coords.y)
   }
 
-  const draw = (x, y) => {
-    if (!maskCanvasRef.current || !canvasRef.current) return
+  const drawDot = (x, y) => {
+    if (!maskCanvasRef.current) return
 
     const maskCanvas = maskCanvasRef.current
     const maskCtx = maskCanvas.getContext('2d')
 
-    maskCtx.globalCompositeOperation = drawingMode === 'draw' ? 'source-over' : 'destination-out'
+    // Draw white circle on mask (this represents the areas to fill)
+    maskCtx.globalCompositeOperation = 'source-over'
     maskCtx.fillStyle = 'white'
     maskCtx.beginPath()
     maskCtx.arc(x, y, brushSize, 0, Math.PI * 2)
@@ -145,16 +156,50 @@ const DrawingCanvas = forwardRef(({
     }
   }
 
+  const drawLine = (fromX, fromY, toX, toY) => {
+    if (!maskCanvasRef.current) return
+
+    const maskCanvas = maskCanvasRef.current
+    const maskCtx = maskCanvas.getContext('2d')
+
+    // Calculate distance and steps for smooth line
+    const distance = Math.sqrt((toX - fromX) ** 2 + (toY - fromY) ** 2)
+    const steps = Math.max(1, Math.floor(distance / (brushSize * 0.1)))
+
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps
+      const x = fromX + (toX - fromX) * t
+      const y = fromY + (toY - fromY) * t
+
+      maskCtx.globalCompositeOperation = 'source-over'
+      maskCtx.fillStyle = 'white'
+      maskCtx.beginPath()
+      maskCtx.arc(x, y, brushSize, 0, Math.PI * 2)
+      maskCtx.fill()
+    }
+
+    redrawCanvas()
+
+    if (onMaskUpdate) {
+      onMaskUpdate(maskCanvas.toDataURL())
+    }
+  }
+
   const continueDrawing = (e) => {
-    if (!isDrawing) return
+    if (!isDrawing || !lastPoint) return
     e.preventDefault()
+    
     const coords = getCoordinates(e)
-    draw(coords.x, coords.y)
+    
+    // Draw line from last point to current point
+    drawLine(lastPoint.x, lastPoint.y, coords.x, coords.y)
+    setLastPoint(coords)
   }
 
   const stopDrawing = () => {
     if (isDrawing) {
       setIsDrawing(false)
+      setLastPoint(null)
       saveToHistory()
     }
   }
@@ -166,22 +211,29 @@ const DrawingCanvas = forwardRef(({
     const ctx = canvas.getContext('2d')
     const maskCanvas = maskCanvasRef.current
 
+    // Clear and draw original image
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     ctx.drawImage(imageRef.current, 0, 0)
 
+    // Create overlay for visualization
     ctx.save()
     ctx.globalAlpha = 0.4
 
+    // Create temporary canvas for colored overlay
     const tempCanvas = document.createElement('canvas')
     tempCanvas.width = maskCanvas.width
     tempCanvas.height = maskCanvas.height
     const tempCtx = tempCanvas.getContext('2d')
 
+    // Draw mask
     tempCtx.drawImage(maskCanvas, 0, 0)
+    
+    // Apply color to white areas of mask
     tempCtx.globalCompositeOperation = 'source-in'
     tempCtx.fillStyle = maskColor
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height)
 
+    // Draw colored overlay on main canvas
     ctx.drawImage(tempCanvas, 0, 0)
     ctx.restore()
   }
@@ -189,11 +241,12 @@ const DrawingCanvas = forwardRef(({
   const clearDrawing = () => {
     if (!maskCanvasRef.current || !canvasRef.current || !imageRef.current) return
 
+    // Clear mask canvas
     const maskCanvas = maskCanvasRef.current
     const maskCtx = maskCanvas.getContext('2d')
-    maskCtx.fillStyle = 'black'
-    maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height)
+    maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height)
 
+    // Redraw main canvas with just the image
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -210,11 +263,12 @@ const DrawingCanvas = forwardRef(({
     if (!maskCanvasRef.current) return
 
     const link = document.createElement('a')
-    link.download = 'tattoo-mask.png'
+    link.download = 'gap-filler-mask.png'
     link.href = maskCanvasRef.current.toDataURL()
     link.click()
   }
 
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (e.ctrlKey || e.metaKey) {
@@ -238,31 +292,15 @@ const DrawingCanvas = forwardRef(({
       <div className="flex items-center gap-4 flex-wrap">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setDrawingMode('draw')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-              drawingMode === 'draw'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+            className="px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 bg-blue-600 text-white"
           >
             <Pen className="w-4 h-4" />
-            Draw
-          </button>
-          <button
-            onClick={() => setDrawingMode('erase')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-              drawingMode === 'erase'
-                ? 'bg-red-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            <Eraser className="w-4 h-4" />
-            Erase
+            Draw Gap Areas
           </button>
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600">Size:</label>
+          <label className="text-sm text-gray-600">Brush Size:</label>
           <input
             type="range"
             min="5"
@@ -293,10 +331,10 @@ const DrawingCanvas = forwardRef(({
           </button>
           <button
             onClick={clearDrawing}
-            className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
+            className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
             title="Clear all"
           >
-            <RotateCcw className="w-5 h-5" />
+            Clear
           </button>
           <button
             onClick={downloadMask}
@@ -330,9 +368,10 @@ const DrawingCanvas = forwardRef(({
 
       {/* Instructions */}
       <div className="text-sm text-gray-600">
-        <p>• Click and drag to mark areas for the tattoo</p>
-        <p>• Use Undo/Redo or Ctrl+Z/Ctrl+Y for mistakes</p>
-        <p>• Be generous with coverage area for best results</p>
+        <p>• Click and drag to mark gaps where you want filler tattoos</p>
+        <p>• Use Undo/Redo or Ctrl+Z/Ctrl+Y to correct mistakes</p>
+        <p>• Mark multiple separate areas for different filler designs</p>
+        <p>• Clear to start over with a clean canvas</p>
       </div>
     </div>
   )
