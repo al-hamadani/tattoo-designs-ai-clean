@@ -13,14 +13,16 @@
     "@mediapipe/selfie_segmentation": "^0.1.1675465747",
     "@sentry/nextjs": "^9.23.0",
     "@sentry/replay": "^7.116.0",
+    "@vercel/analytics": "^1.1.1",
+    "canvas": "^3.1.1",
     "framer-motion": "^10.18.0",
     "lucide-react": "^0.294.0",
     "next": "14.0.4",
     "nprogress": "^0.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "three": "^0.177.0",
-    "@vercel/analytics": "^1.1.1"
+    "replicate": "^1.0.1",
+    "three": "^0.177.0"
   },
   "devDependencies": {
     "@tailwindcss/line-clamp": "^0.4.4",

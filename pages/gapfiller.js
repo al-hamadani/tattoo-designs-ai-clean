@@ -44,57 +44,53 @@ export default function GapFiller() {
   }
 
   const generateGapFiller = async () => {
-    if (!drawingCanvasRef.current) return
+    if (!drawingCanvasRef.current) return;
     
-    setIsGenerating(true)
-    setError('')
-    setGeneratedDesigns([])
+    setIsGenerating(true);
+    setError('');
+    setGeneratedDesigns([]);
     
     try {
-      // Get mask data from drawing canvas
-      const maskData = drawingCanvasRef.current.getMaskData()
+      const maskData = drawingCanvasRef.current.getMaskData();
       
-      // Enhanced prompt for gap filler designs
-      const basePrompt = customPrompt.trim() || `${selectedTheme} themed gap filler elements`
-      const gapFillerPrompt = `${basePrompt}, ${selectedStyle} style tattoo design, 
-        small detailed elements, perfect for filling spaces between existing tattoos, 
-        complementary design, tattoo filler piece, clean design, white background, 
-        suitable for small spaces, cohesive with existing tattoos,
-        no text, no words, no letters, design only`
+      const basePrompt = customPrompt.trim() || `${selectedTheme} themed gap filler elements`;
       
-      // Generate multiple variations
-      const variations = []
-      for (let i = 0; i < 3; i++) {
-        const response = await fetch('/api/generate-tattoo', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt: gapFillerPrompt + ` variation ${i + 1}`,
-            style: selectedStyle,
-            complexity: 'simple',
-            placement: 'custom-gapfiller',
-            size: 'small',
-            maskData: maskData
-          })
+      const response = await fetch('/api/generate-tattoo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: basePrompt,
+          style: selectedStyle,
+          complexity: 'simple',
+          placement: 'custom-gapfiller',
+          size: 'small',
+          originalImage: uploadedImage,
+          maskData: maskData
         })
-        
-        const data = await response.json()
-        if (data.success) {
-          variations.push({
-            id: Date.now() + i,
-            url: data.imageURL,
-            style: selectedStyle,
-            theme: selectedTheme
-          })
-        }
+      });
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to generate designs');
       }
       
-      setGeneratedDesigns(variations)
+      // API returns an array of images, but we only need one
+      const newDesign = {
+        id: Date.now(),
+        url: data.images[0],
+        style: selectedStyle,
+        theme: selectedTheme,
+        prompt: data.prompt
+      };
+      
+      setGeneratedDesigns([newDesign]);
+
     } catch (err) {
-      console.error('Generation error:', err)
-      setError(err.message || 'Failed to generate gap filler designs')
+      console.error('Generation error:', err);
+      setError(err.message || 'Failed to generate gap filler designs');
     } finally {
-      setIsGenerating(false)
+      setIsGenerating(false);
     }
   }
 
