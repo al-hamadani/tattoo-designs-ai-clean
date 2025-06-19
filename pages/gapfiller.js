@@ -9,6 +9,7 @@ import {
 import SEO from '../components/SEO'
 import DrawingCanvas from '../components/DrawingCanvas'
 import CameraCapture from '../components/CameraCapture'
+import tattooStyles from '../constants/tattooStyles'
 
 export default function GapFiller() {
   const [uploadedImage, setUploadedImage] = useState(null)
@@ -89,17 +90,6 @@ export default function GapFiller() {
       setIsGenerating(false)
     }
   }
-
-  const tattooStyles = [
-    { value: 'minimalist', label: 'Minimalist', description: 'Simple, clean lines' },
-    { value: 'dotwork', label: 'Dotwork', description: 'Stippled texture' },
-    { value: 'fine-line', label: 'Fine Line', description: 'Delicate details' },
-    { value: 'geometric', label: 'Geometric', description: 'Small shapes' },
-    { value: 'traditional', label: 'Traditional', description: 'Classic small motifs' },
-    { value: 'ornamental', label: 'Ornamental', description: 'Decorative elements' },
-    { value: 'mandala', label: 'Mandala', description: 'Small circular patterns' },
-    { value: 'abstract', label: 'Abstract', description: 'Artistic shapes' }
-  ]
 
   const themes = [
     { value: 'floral', label: 'Floral', icon: '🌸' },

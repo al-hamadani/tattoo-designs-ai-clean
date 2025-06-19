@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { ArrowRight, Sparkles, Zap, Eye, Layers, Download, Check } from 'lucide-react'
 import SEO from '../components/SEO'
+import Navigation from '../components/Navigation'
+
 export default function Home() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [activeStyle, setActiveStyle] = useState(0)
@@ -36,27 +38,7 @@ export default function Home() {
       </Head>
       <SEO />
 
-      {/* Navigation */}
-      <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-white/80 backdrop-blur-lg shadow-sm' : 'bg-transparent'}`}>
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
-            <Link href="/" className="text-2xl font-bold tracking-tight">
-              TattooDesignsAI
-            </Link>
-            <div className="hidden md:flex items-center gap-8">
-              <Link href="/generate" className="hover:text-blue-600 transition-colors">Generate</Link>
-              <Link href="/coverup" className="hover:text-blue-600 transition-colors">CoverUp</Link>
-              <Link href="/gapfiller" className="hover:text-blue-600 transition-colors">GapFiller</Link>
-              <Link href="/how-it-works" className="hover:text-blue-600 transition-colors">How It Works</Link>
-              <Link href="/gallery" className="hover:text-blue-600 transition-colors">Gallery</Link>
-
-              <button className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-all hover:scale-105">
-                Try Free
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Navigation />
 
       {/* Hero Section */}
       <section className="min-h-screen flex items-center justify-center px-6 pt-20 bg-gradient-to-b from-gray-50 to-white">

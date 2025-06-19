@@ -3,6 +3,8 @@
 import { useState, useRef } from 'react'
 import { ButtonLoading, GenerationProgress } from './LoadingStates'
 import LazyImage from './LazyImage'
+import tattooStyles from '../constants/tattooStyles'
+import { complexityLevels, placementOptions, sizeOptions } from '../constants/tattooOptions'
 
 // --- Analytics Event Tracking ---
 const trackEvent = (eventName, parameters = {}) => {
@@ -10,65 +12,6 @@ const trackEvent = (eventName, parameters = {}) => {
     window.gtag('event', eventName, parameters)
   }
 }
-
-const tattooStyles = [
-  { value: 'traditional', label: 'Traditional', description: 'Bold lines, bright colors, classic Americana' },
-  { value: 'neo-traditional', label: 'Neo-Traditional', description: 'Modern twist on traditional with more detail' },
-  { value: 'old-school', label: 'Old School', description: 'Vintage sailor tattoos, simple and bold' },
-  { value: 'realistic', label: 'Realistic', description: 'Photorealistic, highly detailed artwork' },
-  { value: 'portrait', label: 'Portrait', description: 'Detailed faces and figures' },
-  { value: 'surreal', label: 'Surreal', description: 'Dreamlike, impossible imagery' },
-  { value: 'minimalist', label: 'Minimalist', description: 'Clean, simple lines, less is more' },
-  { value: 'fine-line', label: 'Fine Line', description: 'Delicate, thin lines, elegant details' },
-  { value: 'single-needle', label: 'Single Needle', description: 'Ultra-fine detail work' },
-  { value: 'blackwork', label: 'Blackwork', description: 'Solid black designs, high contrast' },
-  { value: 'tribal', label: 'Tribal', description: 'Bold patterns, cultural significance' },
-  { value: 'gothic', label: 'Gothic', description: 'Dark, mysterious, medieval inspiration' },
-  { value: 'geometric', label: 'Geometric', description: 'Mathematical patterns, sacred geometry' },
-  { value: 'mandala', label: 'Mandala', description: 'Circular, spiritual patterns' },
-  { value: 'abstract', label: 'Abstract', description: 'Non-representational art' },
-  { value: 'japanese', label: 'Japanese', description: 'Irezumi style, koi, dragons, waves' },
-  { value: 'chinese', label: 'Chinese', description: 'Traditional Chinese motifs and symbolism' },
-  { value: 'celtic', label: 'Celtic', description: 'Knots, spirals, Irish heritage' },
-  { value: 'polynesian', label: 'Polynesian', description: 'Pacific island tribal patterns' },
-  { value: 'watercolor', label: 'Watercolor', description: 'Flowing colors, painterly effects' },
-  { value: 'sketch', label: 'Sketch', description: 'Rough, hand-drawn appearance' },
-  { value: 'dotwork', label: 'Dotwork', description: 'Stippling technique, dot patterns' },
-  { value: 'linework', label: 'Linework', description: 'Focus on clean, bold lines' },
-  { value: 'biomechanical', label: 'Biomechanical', description: 'Fusion of organic and mechanical' },
-  { value: 'new-school', label: 'New School', description: 'Cartoon-like, exaggerated features' },
-  { value: 'trash-polka', label: 'Trash Polka', description: 'Chaotic mix of realistic and abstract' }
-]
-
-const complexityLevels = [
-  { value: 'simple', label: 'Simple', description: 'Clean, basic design (1-3 elements)' },
-  { value: 'medium', label: 'Medium', description: 'Moderate detail (3-5 elements)' },
-  { value: 'complex', label: 'Complex', description: 'Highly detailed (5+ elements)' },
-  { value: 'masterpiece', label: 'Masterpiece', description: 'Maximum detail and artistry' }
-]
-
-const placementOptions = [
-  { value: 'generic', label: 'Generic Design', description: 'Standalone design' },
-  { value: 'forearm', label: 'Forearm', description: 'Vertical orientation, medium size' },
-  { value: 'bicep', label: 'Bicep', description: 'Curved placement, bold design' },
-  { value: 'shoulder', label: 'Shoulder', description: 'Circular/curved composition' },
-  { value: 'back', label: 'Back', description: 'Large canvas, detailed work' },
-  { value: 'chest', label: 'Chest', description: 'Symmetrical, powerful placement' },
-  { value: 'wrist', label: 'Wrist', description: 'Small, delicate design' },
-  { value: 'ankle', label: 'Ankle', description: 'Compact, elegant placement' },
-  { value: 'neck', label: 'Neck', description: 'Bold statement piece' },
-  { value: 'thigh', label: 'Thigh', description: 'Large area, detailed possibilities' },
-  { value: 'ribcage', label: 'Ribcage', description: 'Curved, flowing design' },
-  { value: 'calf', label: 'Calf', description: 'Vertical space, good visibility' }
-]
-
-const sizeOptions = [
-  { value: 'tiny', label: 'Tiny (1-2")', description: 'Coin-sized, minimal detail' },
-  { value: 'small', label: 'Small (2-4")', description: 'Palm-sized, simple elements' },
-  { value: 'medium', label: 'Medium (4-6")', description: 'Hand-sized, good detail' },
-  { value: 'large', label: 'Large (6-10")', description: 'Forearm-sized, complex detail' },
-  { value: 'extra-large', label: 'XL (10"+)', description: 'Major piece, maximum detail' }
-]
 
 const examplePrompts = [
   'A majestic wolf howling at the moon',

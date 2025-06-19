@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Filter, Grid3X3, Square, ChevronDown } from 'lucide-react'
 import { CardSkeleton } from '../components/LoadingStates'
 import LazyImage from '../components/LazyImage'
+import Navigation from '../components/Navigation'
 
 export default function Gallery() {
   const [selectedStyle, setSelectedStyle] = useState('all')
@@ -93,27 +94,7 @@ export default function Gallery() {
         <meta name="description" content="Explore all AI-generated tattoo designs. See the prompts that created each unique design." />
       </Head>
 
-      {/* Navigation - GALLERY PAGE */}
-      <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
-            <Link href="/" className="text-2xl font-bold tracking-tight">
-              TattooDesignsAI
-            </Link>
-            <div className="hidden md:flex items-center gap-8">
-              <Link href="/generate" className="hover:text-blue-600 transition-colors">Generate</Link>
-              <Link href="/coverup" className="hover:text-blue-600 transition-colors">Cover Up</Link>
-              <Link href="/gapfiller" className="hover:text-blue-600 transition-colors">Gap Filler</Link>
-              <Link href="/styles" className="hover:text-blue-600 transition-colors">Styles</Link>
-              <Link href="/how-it-works" className="hover:text-blue-600 transition-colors">How It Works</Link>
-              <Link href="/gallery" className="text-blue-600 font-medium">Gallery</Link>
-              <Link href="/generate" className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-all hover:scale-105">
-                Try Free
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Navigation />
 
       <main className="min-h-screen pt-20 bg-gray-50">
         {/* Header */}

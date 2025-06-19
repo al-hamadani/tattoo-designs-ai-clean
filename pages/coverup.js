@@ -9,6 +9,7 @@ import {
 import SEO from '../components/SEO'
 import DrawingCanvas from '../components/DrawingCanvas'
 import CameraCapture from '../components/CameraCapture'
+import tattooStyles from '../constants/tattooStyles'
 
 export default function CoverUp() {
   const [uploadedImage, setUploadedImage] = useState(null)
@@ -99,17 +100,6 @@ export default function CoverUp() {
       setError('Failed to download image')
     }
   }
-
-  const tattooStyles = [
-    { value: 'blackwork', label: 'Blackwork', description: 'Best for complete coverage' },
-    { value: 'traditional', label: 'Traditional', description: 'Bold lines and solid fills' },
-    { value: 'japanese', label: 'Japanese', description: 'Dense patterns and flow' },
-    { value: 'geometric', label: 'Geometric', description: 'Structured coverage' },
-    { value: 'mandala', label: 'Mandala', description: 'Circular dense patterns' },
-    { value: 'tribal', label: 'Tribal', description: 'Bold black patterns' },
-    { value: 'ornamental', label: 'Ornamental', description: 'Decorative coverage' },
-    { value: 'dotwork', label: 'Dotwork', description: 'Dense stippling' }
-  ]
 
   return (
     <>
@@ -420,3 +410,4 @@ export default function CoverUp() {
     </>
   )
 }
+
