@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { ButtonLoading, GenerationProgress } from './LoadingStates'
 import LazyImage from './LazyImage'
 import tattooStyles from '../constants/tattooStyles'
-import { complexityLevels, placementOptions, sizeOptions } from '../constants/tattooOptions'
+import { complexityLevels, placementOptions, sizeOptions, examplePrompts } from '../constants/tattooOptions'
 
 // --- Analytics Event Tracking ---
 const trackEvent = (eventName, parameters = {}) => {
@@ -12,19 +12,6 @@ const trackEvent = (eventName, parameters = {}) => {
     window.gtag('event', eventName, parameters)
   }
 }
-
-const examplePrompts = [
-  'A majestic wolf howling at the moon',
-  'Japanese cherry blossom branch',
-  'Geometric mandala with lotus center',
-  'Minimalist mountain range silhouette',
-  'Celtic knot with hidden meaning',
-  'Watercolor butterfly transformation',
-  'Biomechanical arm enhancement',
-  'Traditional anchor with banner',
-  'Dotwork sunflower in bloom',
-  'Abstract ocean waves flow'
-]
 
 const TattooGenerator = () => {
   const [prompt, setPrompt] = useState('')

@@ -28,4 +28,37 @@ export const sizeOptions = [
   { value: 'medium', label: 'Medium (4-6\")', description: 'Hand-sized, good detail' },
   { value: 'large', label: 'Large (6-10\")', description: 'Forearm-sized, complex detail' },
   { value: 'extra-large', label: 'XL (10\"+)', description: 'Major piece, maximum detail' }
+];
+
+export const styleCategories = [
+  { id: 'all', name: 'All Styles' },
+  { id: 'modern', name: 'Modern' },
+  { id: 'traditional', name: 'Traditional' },
+  { id: 'cultural', name: 'Cultural' },
+  { id: 'artistic', name: 'Artistic' },
+  { id: 'technical', name: 'Technical' }
+];
+
+export const tattooThemes = [
+  { value: 'floral', label: 'Floral', icon: '🌸' },
+  { value: 'stars', label: 'Stars & Cosmos', icon: '⭐' },
+  { value: 'nature', label: 'Nature', icon: '🌿' },
+  { value: 'geometric', label: 'Geometric', icon: '◆' },
+  { value: 'symbols', label: 'Symbols', icon: '☯' },
+  { value: 'animals', label: 'Small Animals', icon: '🦋' },
+  { value: 'abstract', label: 'Abstract', icon: '🎨' },
+  { value: 'ornamental', label: 'Ornamental', icon: '✨' }
+];
+
+export const examplePrompts = [
+  'A majestic wolf howling at the moon',
+  'Japanese cherry blossom branch with falling petals',
+  'Geometric mandala with lotus flower center',
+  'Minimalist mountain range silhouette with sunrise',
+  'Celtic knot with hidden trinity symbol',
+  'Watercolor butterfly emerging from chrysalis',
+  'Biomechanical arm enhancement',
+  'Traditional anchor with banner',
+  'Dotwork sunflower in bloom',
+  'Abstract ocean waves flow'
 ]; 

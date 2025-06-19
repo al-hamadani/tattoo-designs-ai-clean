@@ -15,6 +15,8 @@ import StyleSelector from '../components/generate/StyleSelector'
 import DesignGrid from '../components/generate/DesignGrid'
 import ImageUploadAndMask from '../components/generate/ImageUploadAndMask'
 import { buildTattooPrompt } from '../lib/promptBuilder'
+import Layout from '../components/Layout'
+import { tattooThemes } from '../constants/tattooOptions'
 
 export default function GapFiller() {
   const [uploadedImage, setUploadedImage] = useState(null)
@@ -96,32 +98,12 @@ export default function GapFiller() {
     }
   }
 
-  const themes = [
-    { value: 'floral', label: 'Floral', icon: '🌸' },
-    { value: 'stars', label: 'Stars & Cosmos', icon: '⭐' },
-    { value: 'nature', label: 'Nature', icon: '🌿' },
-    { value: 'geometric', label: 'Geometric', icon: '◆' },
-    { value: 'symbols', label: 'Symbols', icon: '☯' },
-    { value: 'animals', label: 'Small Animals', icon: '🦋' },
-    { value: 'abstract', label: 'Abstract', icon: '🎨' },
-    { value: 'ornamental', label: 'Ornamental', icon: '✨' }
-  ]
-
   return (
-    <>
-      <Head>
-        <title>Gap Filler Tattoo Generator - TattooDesignsAI</title>
-        <meta name="description" content="Generate perfect gap filler tattoo designs to complete your tattoo collection with AI" />
-      </Head>
-      
-      <SEO 
-        title="Gap Filler Tattoo Generator"
-        description="Create AI-powered gap filler tattoo designs. Upload a photo, mark the gaps, and get custom small designs that perfectly complement your existing tattoos."
-        keywords="gap filler tattoo, tattoo filler ideas, small tattoo designs, tattoo gap fillers, space filler tattoos"
-      />
-
-      <Navigation />
-
+    <Layout
+      title="Gap Filler Tattoo Generator"
+      description="Create AI-powered gap filler tattoo designs. Upload a photo, mark the gaps, and get custom small designs that perfectly complement your existing tattoos."
+      keywords="gap filler tattoo, tattoo filler ideas, small tattoo designs, tattoo gap fillers, space filler tattoos"
+    >
       <main className="min-h-screen pt-20 pb-12 bg-gray-50">
         <div className="max-w-6xl mx-auto px-6">
           {/* Header */}
@@ -174,7 +156,7 @@ export default function GapFiller() {
                   />
                   <label className="text-sm font-medium text-gray-700 mb-2 block">Theme</label>
                   <div className="grid grid-cols-4 gap-2 mb-4">
-                    {themes.map(theme => (
+                    {tattooThemes.map(theme => (
                       <button
                         key={theme.value}
                         onClick={() => setSelectedTheme(theme.value)}
@@ -265,6 +247,6 @@ export default function GapFiller() {
           onClose={() => setShowCamera(false)}
         />
       )}
-    </>
+    </Layout>
   )
 }

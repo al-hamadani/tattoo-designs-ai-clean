@@ -7,6 +7,7 @@ import {
   Check, ChevronDown, Zap, Camera, Palette
 } from 'lucide-react'
 import Navigation from '../components/Navigation'
+import Layout from '../components/Layout'
 
 export default function HowItWorks() {
   const [activeStep, setActiveStep] = useState(0)
@@ -118,14 +119,11 @@ export default function HowItWorks() {
   ]
 
   return (
-    <>
-      <Head>
-        <title>How It Works - 5 Simple Steps to Your Perfect Tattoo | TattooDesignsAI</title>
-        <meta name="description" content="Learn how to create your perfect tattoo design in 5 easy steps. From idea to ink-ready artwork with AI and AR technology." />
-      </Head>
-
-      <Navigation />
-
+    <Layout
+      title="How It Works"
+      description="Learn how TattooDesignsAI generates custom tattoo designs using artificial intelligence."
+      keywords="how it works, AI tattoo, tattoo design process, tattoo generator"
+    >
       <main className="min-h-screen pt-20 bg-gray-50">
         {/* Hero Section */}
         <section className="bg-white border-b border-gray-100">
@@ -369,6 +367,6 @@ export default function HowItWorks() {
           </div>
         </section>
       </main>
-    </>
+    </Layout>
   )
 }

@@ -3,22 +3,14 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Search, Filter, ArrowRight, Info, Grid, List } from 'lucide-react'
-import tattooStyles from '../constants/tattooStyles'
+import { styleCategories } from '../constants/tattooOptions'
 import Navigation from '../components/Navigation'
+import Layout from '../components/Layout'
 
 export default function Styles() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [viewMode, setViewMode] = useState('grid')
-
-  const styleCategories = [
-    { id: 'all', name: 'All Styles' },
-    { id: 'modern', name: 'Modern' },
-    { id: 'traditional', name: 'Traditional' },
-    { id: 'cultural', name: 'Cultural' },
-    { id: 'artistic', name: 'Artistic' },
-    { id: 'technical', name: 'Technical' }
-  ]
 
   const filteredStyles = tattooStyles.filter(style => {
     const matchesSearch = style.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -28,14 +20,11 @@ export default function Styles() {
   })
 
   return (
-    <>
-      <Head>
-        <title>Tattoo Styles Gallery - Explore 20+ Artistic Styles | TattooDesignsAI</title>
-        <meta name="description" content="Explore 20+ tattoo styles from minimalist to traditional. Learn about each style's characteristics and find your perfect artistic expression." />
-      </Head>
-
-      <Navigation />
-
+    <Layout
+      title="Tattoo Styles Gallery"
+      description="Explore a gallery of tattoo styles. Find inspiration for your next tattoo with AI-generated examples."
+      keywords="tattoo styles, tattoo gallery, tattoo inspiration, AI tattoo"
+    >
       <main className="min-h-screen pt-20 pb-12 bg-gray-50">
         {/* Header */}
         <section className="bg-white border-b border-gray-100">
@@ -205,6 +194,6 @@ export default function Styles() {
           </div>
         </section>
       </main>
-    </>
+    </Layout>
   )
 }

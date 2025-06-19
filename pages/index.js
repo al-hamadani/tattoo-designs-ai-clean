@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { ArrowRight, Sparkles, Zap, Eye, Layers, Download, Check } from 'lucide-react'
 import SEO from '../components/SEO'
 import Navigation from '../components/Navigation'
+import Layout from '../components/Layout'
 
 export default function Home() {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -30,16 +31,11 @@ export default function Home() {
   ]
 
   return (
-    <>
-      <Head>
-        <title>TattooDesignsAI - Your Next Tattoo, Imagined in Seconds</title>
-        <meta name="description" content="Create unique AI-generated tattoo designs in seconds. Try on virtual tattoos with AR before getting inked. Free to start, no artistic skills needed." />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-      <SEO />
-
-      <Navigation />
-
+    <Layout
+      title="AI Tattoo Design Generator"
+      description="Create custom tattoo designs with AI. Upload your idea, choose a style, and get unique tattoo art instantly."
+      keywords="tattoo design, AI tattoo, custom tattoo, tattoo generator, tattoo styles"
+    >
       {/* Hero Section */}
       <section className="min-h-screen flex items-center justify-center px-6 pt-20 bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-5xl mx-auto text-center">
@@ -348,6 +344,6 @@ export default function Home() {
           </div>
         </div>
       </footer>
-    </>
+    </Layout>
   )
 }

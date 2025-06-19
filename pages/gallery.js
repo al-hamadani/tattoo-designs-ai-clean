@@ -6,6 +6,7 @@ import { Filter, Grid3X3, Square, ChevronDown } from 'lucide-react'
 import { CardSkeleton } from '../components/LoadingStates'
 import LazyImage from '../components/LazyImage'
 import Navigation from '../components/Navigation'
+import Layout from '../components/Layout'
 
 export default function Gallery() {
   const [selectedStyle, setSelectedStyle] = useState('all')
@@ -88,14 +89,11 @@ export default function Gallery() {
   )
 
   return (
-    <>
-      <Head>
-        <title>Tattoo Design Gallery - Browse All Creations | TattooDesignsAI</title>
-        <meta name="description" content="Explore all AI-generated tattoo designs. See the prompts that created each unique design." />
-      </Head>
-
-      <Navigation />
-
+    <Layout
+      title="Tattoo Gallery"
+      description="Browse a gallery of AI-generated tattoo designs. Get inspired for your next tattoo."
+      keywords="tattoo gallery, AI tattoo, tattoo inspiration, tattoo designs"
+    >
       <main className="min-h-screen pt-20 bg-gray-50">
         {/* Header */}
         <section className="bg-white border-b border-gray-100">
@@ -324,6 +322,6 @@ export default function Gallery() {
           </div>
         </section>
       </main>
-    </>
+    </Layout>
   )
 }

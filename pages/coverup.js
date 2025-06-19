@@ -15,6 +15,7 @@ import DesignGrid from '../components/generate/DesignGrid'
 import ImageUploadAndMask from '../components/generate/ImageUploadAndMask'
 import { buildTattooPrompt } from '../lib/promptBuilder'
 import Navigation from '../components/Navigation'
+import Layout from '../components/Layout'
 
 export default function CoverUp() {
   const [uploadedImage, setUploadedImage] = useState(null)
@@ -96,20 +97,11 @@ export default function CoverUp() {
   }
 
   return (
-    <>
-      <Head>
-        <title>Cover Up Tattoo Generator - TattooDesignsAI</title>
-        <meta name="description" content="Generate custom cover-up tattoo designs that effectively conceal unwanted tattoos with AI" />
-      </Head>
-      
-      <SEO 
-        title="Cover Up Tattoo Generator"
-        description="Create AI-powered cover-up tattoo designs. Upload a photo, mark the area to cover, and get custom designs that effectively conceal unwanted tattoos."
-        keywords="cover up tattoo, tattoo cover up ideas, tattoo cover up designs, hide old tattoo"
-      />
-
-      <Navigation />
-
+    <Layout
+      title="Cover Up Tattoo Generator"
+      description="Generate custom cover-up tattoo designs that effectively conceal unwanted tattoos with AI."
+      keywords="cover up tattoo, tattoo cover up ideas, tattoo cover up designs, hide old tattoo"
+    >
       <main className="min-h-screen pt-20 pb-12 bg-gray-50">
         <div className="max-w-6xl mx-auto px-6">
           {/* Header */}
@@ -242,7 +234,7 @@ export default function CoverUp() {
           onClose={() => setShowCamera(false)}
         />
       )}
-    </>
+    </Layout>
   )
 }
 

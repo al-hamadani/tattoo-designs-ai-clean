@@ -13,12 +13,13 @@ import RealSocialSharing from '../components/RealSocialSharing'
 // pages/generate.js
 import dynamic from 'next/dynamic';
 import tattooStyles from '../constants/tattooStyles';
-import { complexityLevels, placementOptions, sizeOptions } from '../constants/tattooOptions';
+import { complexityLevels, placementOptions, sizeOptions, examplePrompts } from '../constants/tattooOptions';
 import Navigation from '../components/Navigation';
 import StyleSelector from '../components/generate/StyleSelector';
 import ComplexitySelector from '../components/generate/ComplexitySelector';
 import DesignGrid from '../components/generate/DesignGrid';
 import GenerationForm from '../components/generate/GenerationForm';
+import Layout from '../components/Layout';
 
 // Use the dynamic wrapper
 const RealisticARPreview = dynamic(
@@ -50,15 +51,6 @@ const router = useRouter();
   const [showAdvanced, setShowAdvanced] = useState(false)
   
   const promptInputRef = useRef(null)
-
-  const examplePrompts = [
-    'A majestic wolf howling at the moon',
-    'Japanese cherry blossom branch with falling petals',
-    'Geometric mandala with lotus flower center',
-    'Minimalist mountain range silhouette with sunrise',
-    'Celtic knot with hidden trinity symbol',
-    'Watercolor butterfly emerging from chrysalis'
-  ]
 
   // Build prompt for API
   const generateUniquePrompt = () => {
@@ -233,18 +225,11 @@ const handleARClick = (design) => {
 };
 
   return (
-    <>
-      <Head>
-        <title>Generate Your Tattoo Design - TattooDesignsAI</title>
-        <meta name="description" content="Create unique tattoo designs with AI. Describe your idea and get instant, personalized tattoo artwork with 20+ styles and advanced options." />
-      </Head>
-      <SEO 
-        title="Generate Your Tattoo Design"
-        description="Create custom tattoo designs with AI. Choose from 20+ styles including minimalist, traditional, geometric, and more. Free to try!"
-        keywords="tattoo generator, AI tattoo design, custom tattoo, tattoo creator online"
-      />
-      <Navigation />
-
+    <Layout
+      title="Tattoo Generator"
+      description="Generate custom tattoo designs with AI. Choose your style, placement, and more."
+      keywords="tattoo generator, AI tattoo, tattoo design, custom tattoo, tattoo styles"
+    >
       <main className="min-h-screen pt-20 pb-12 px-6 bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
@@ -321,6 +306,6 @@ const handleARClick = (design) => {
           </div>
         </div>
       </main>
-    </>
+    </Layout>
   )
 }
