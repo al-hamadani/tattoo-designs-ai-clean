@@ -16,12 +16,10 @@ import DesignGrid from '../components/generate/DesignGrid'
 import ImageUploadAndMask from '../components/generate/ImageUploadAndMask'
 import { buildTattooPrompt } from '../lib/promptBuilder'
 import Layout from '../components/Layout'
-import { tattooThemes } from '../constants/tattooOptions'
 
 export default function GapFiller() {
   const [uploadedImage, setUploadedImage] = useState(null)
   const [selectedStyle, setSelectedStyle] = useState('minimalist')
-  const [selectedTheme, setSelectedTheme] = useState('floral')
   const [customPrompt, setCustomPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedDesigns, setGeneratedDesigns] = useState([])
@@ -53,7 +51,7 @@ export default function GapFiller() {
     try {
       const maskData = drawingCanvasRef.current.getMaskData();
       
-      const basePrompt = customPrompt.trim() || `${selectedTheme} themed gap filler elements`;
+      const basePrompt = customPrompt.trim() || 'minimalist themed gap filler elements';
       
       const response = await fetch('/api/generate-tattoo', {
         method: 'POST',
@@ -80,7 +78,6 @@ export default function GapFiller() {
         id: Date.now(),
         url: data.images[0],
         style: selectedStyle,
-        theme: selectedTheme,
         prompt: data.prompt
       };
       
@@ -150,23 +147,6 @@ export default function GapFiller() {
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors resize-none mb-2"
                     rows={2}
                   />
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">Theme</label>
-                  <div className="grid grid-cols-4 gap-2 mb-4">
-                    {tattooThemes.map(theme => (
-                      <button
-                        key={theme.value}
-                        onClick={() => setSelectedTheme(theme.value)}
-                        className={`p-3 rounded-lg text-center transition-all ${
-                          selectedTheme === theme.value
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        <div className="text-2xl mb-1">{theme.icon}</div>
-                        <div className="text-xs">{theme.label}</div>
-                      </button>
-                    ))}
-                  </div>
                   <StyleSelector
                     tattooStyles={tattooStyles}
                     primaryStyle={selectedStyle}
@@ -222,9 +202,7 @@ export default function GapFiller() {
                   Gap Filler Tips:
                 </h4>
                 <ul className="text-sm text-green-800 space-y-1">
-                  <li>• These designs complement {selectedTheme} themed tattoos</li>
-                  <li>• {selectedStyle} style works well for small spaces</li>
-                  <li>• Consider the flow between existing tattoos</li>
+                  <li>• Minimalist style works well for small spaces</li>
                   <li>• Small designs heal faster and age well</li>
                 </ul>
               </div>
