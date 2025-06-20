@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Search, Filter, ArrowRight, Info, Grid, List } from 'lucide-react'
 import { styleCategories } from '../constants/tattooOptions'
+import tattooStyles from '../constants/tattooStyles'
 import Navigation from '../components/Navigation'
 import Layout from '../components/Layout'
 
