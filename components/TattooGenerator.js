@@ -1,4 +1,4 @@
-// components/TattooGenerator.js
+// components/TattooGenerator.js - With Debug Features Added
 
 import { useState, useRef } from 'react'
 import { ButtonLoading, GenerationProgress } from './LoadingStates'
@@ -27,6 +27,7 @@ const TattooGenerator = () => {
   const [showGenerator, setShowGenerator] = useState(false)
   const [showARPreview, setShowARPreview] = useState(false)
   const [generationStage, setGenerationStage] = useState('preparing')
+  const [debugInfo, setDebugInfo] = useState(null) // DEBUG: Add debug state
   const videoRef = useRef(null)
 
   // --- Prompt Generation ---
@@ -72,6 +73,7 @@ const TattooGenerator = () => {
       setError('Please describe your tattoo idea')
       return
     }
+    console.log('[TattooGenerator] Starting generation...');
     setIsGenerating(true)
     setError('')
     setGeneratedImage(null)
@@ -85,22 +87,38 @@ const TattooGenerator = () => {
       setTimeout(() => setGenerationStage('generating'), 500)
       const uniquePrompt = generateUniquePrompt()
       setGeneratedPrompt(uniquePrompt)
+      
+      const requestBody = {
+        prompt: uniquePrompt,
+        style: primaryStyle,
+        complexity,
+        placement,
+        size
+      };
+      console.log('[TattooGenerator] Sending request to /api/generate-tattoo with body:', JSON.stringify(requestBody, null, 2));
+
       const response = await fetch('/api/generate-tattoo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: uniquePrompt,
-          style: primaryStyle,
-          complexity,
-          placement,
-          size
-        })
+        body: JSON.stringify(requestBody)
       })
 
       setGenerationStage('enhancing')
+      console.log('[TattooGenerator] Received response from API. Status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[TattooGenerator] API response not OK. Body:', errorText);
+        throw new Error(`API Error: ${response.statusText}`);
+      }
+
       const data = await response.json()
+      console.log('[TattooGenerator] API response JSON data:', data);
+
       if (!data.success) throw new Error(data.message || 'Generation failed')
+      
       setGenerationStage('finalizing')
+      console.log(`[TattooGenerator] Setting generated image URL: ${data.imageURL}`);
       setTimeout(() => {
         setGeneratedImage(data.imageURL)
         setIsGenerating(false)
@@ -110,6 +128,7 @@ const TattooGenerator = () => {
         style: primaryStyle, complexity, placement, size
       })
     } catch (err) {
+      console.error('[TattooGenerator] An error occurred in handleGenerate:', err);
       setError(err.message || 'Failed to generate tattoo. Please try again.')
       setIsGenerating(false)
       trackEvent('generate_tattoo_error', {
@@ -192,6 +211,22 @@ const TattooGenerator = () => {
           20+ artistic styles • Complexity control • AR preview • 100% unique designs
         </p>
       </div>
+
+      {/* DEBUG: Debug Information Display */}
+      {debugInfo && (
+        <div className="bg-yellow-900/50 border border-yellow-500/50 rounded-lg p-4 mx-4">
+          <h4 className="text-yellow-300 font-medium mb-2">🔍 Debug Information:</h4>
+          <div className="text-sm space-y-1 text-yellow-200">
+            <div>Success: <span className="font-mono">{String(debugInfo.success)}</span></div>
+            <div>Has Images Array: <span className="font-mono">{String(debugInfo.hasImages)}</span></div>
+            <div>Has ImageURL: <span className="font-mono">{String(debugInfo.hasImageURL)}</span></div>
+            <div>Final URL Length: <span className="font-mono">{debugInfo.urlLength}</span></div>
+            <div>URL Preview: <span className="font-mono text-xs break-all">{debugInfo.urlPreview}...</span></div>
+            <div>Response Keys: <span className="font-mono text-xs">{debugInfo.responseKeys.join(', ')}</span></div>
+          </div>
+        </div>
+      )}
+
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Controls Section */}
         <div className="lg:col-span-2 space-y-6">
@@ -349,12 +384,33 @@ const TattooGenerator = () => {
             ) : generatedImage ? (
               <div className="space-y-4">
                 <div className="bg-white rounded-lg p-4">
-                  <LazyImage
-                    src={generatedImage}
-                    alt="Generated tattoo design"
-                    className="w-full h-auto rounded-lg"
-                    aspectRatio="aspect-square"
-                  />
+                  {/* DEBUG: Add direct img tag alongside LazyImage for comparison */}
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs text-gray-600 mb-2">LazyImage Component:</p>
+                      <LazyImage
+                        src={generatedImage}
+                        alt="Generated tattoo design"
+                        className="w-full h-auto rounded-lg"
+                        aspectRatio="aspect-square"
+                        onLoad={() => console.log(`[TattooGenerator] Image loaded successfully from src: ${generatedImage}`)}
+                        onError={() => console.error(`[TattooGenerator] Image failed to load from src: ${generatedImage}`)}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 mb-2">Direct Image (Debug):</p>
+                      <img
+                        src={generatedImage}
+                        alt="Debug tattoo"
+                        className="w-full h-auto rounded-lg border-2 border-blue-300"
+                        onLoad={() => console.log('✅ Direct img tag loaded successfully')}
+                        onError={(e) => {
+                          console.error('❌ Direct img tag failed to load:', e)
+                          console.error('Failed URL:', generatedImage)
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div className="flex flex-col space-y-2">
                   <button
@@ -373,6 +429,7 @@ const TattooGenerator = () => {
                     onClick={() => {
                       setGeneratedImage(null)
                       setError('')
+                      setDebugInfo(null) // DEBUG: Clear debug info
                     }}
                     className="w-full bg-gray-600 text-white py-3 px-4 rounded-lg hover:bg-gray-700 transition-colors font-medium text-sm"
                   >
