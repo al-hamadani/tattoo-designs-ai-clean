@@ -53,17 +53,17 @@ export default function GapFiller() {
       
       const basePrompt = customPrompt.trim() || 'minimalist themed gap filler elements';
       
-      const response = await fetch('/api/generate-tattoo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        const response = await fetch('/api/generate-tattoo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
           prompt: basePrompt,
-          style: selectedStyle,
-          complexity: 'simple',
-          placement: 'custom-gapfiller',
-          size: 'small',
+            style: selectedStyle,
+            complexity: 'simple',
+            placement: 'custom-gapfiller',
+            size: 'small',
           originalImage: uploadedImage,
-          maskData: maskData
+            maskData: maskData
         })
       });
       
@@ -93,9 +93,9 @@ export default function GapFiller() {
 
   return (
     <Layout
-      title="Gap Filler Tattoo Generator"
-      description="Create AI-powered gap filler tattoo designs. Upload a photo, mark the gaps, and get custom small designs that perfectly complement your existing tattoos."
-      keywords="gap filler tattoo, tattoo filler ideas, small tattoo designs, tattoo gap fillers, space filler tattoos"
+        title="Gap Filler Tattoo Generator"
+        description="Create AI-powered gap filler tattoo designs. Upload a photo, mark the gaps, and get custom small designs that perfectly complement your existing tattoos."
+        keywords="gap filler tattoo, tattoo filler ideas, small tattoo designs, tattoo gap fillers, space filler tattoos"
     >
       <main className="min-h-screen pt-20 pb-12 bg-gray-50">
         <div className="max-w-6xl mx-auto px-6">
@@ -133,20 +133,20 @@ export default function GapFiller() {
                   drawingCanvasRef={drawingCanvasRef}
                 >
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3 mb-4">
-                    <Info className="w-5 h-5 text-blue-600 mt-0.5" />
-                    <p className="text-sm text-blue-800">
-                      Draw circles or shapes in the gaps where you want filler tattoos. 
-                      The AI will generate designs that fit perfectly in these spaces.
-                    </p>
-                  </div>
+                      <Info className="w-5 h-5 text-blue-600 mt-0.5" />
+                      <p className="text-sm text-blue-800">
+                        Draw circles or shapes in the gaps where you want filler tattoos. 
+                        The AI will generate designs that fit perfectly in these spaces.
+                      </p>
+                    </div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Describe your gap filler design (optional)</label>
-                  <textarea
-                    value={customPrompt}
+                      <textarea
+                        value={customPrompt}
                     onChange={e => setCustomPrompt(e.target.value)}
-                    placeholder="e.g., 'small stars and dots' or 'tiny flowers and leaves'"
+                        placeholder="e.g., 'small stars and dots' or 'tiny flowers and leaves'"
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors resize-none mb-2"
-                    rows={2}
-                  />
+                        rows={2}
+                      />
                   <StyleSelector
                     tattooStyles={tattooStyles}
                     primaryStyle={selectedStyle}
@@ -179,7 +179,7 @@ export default function GapFiller() {
                     </div>
                   )}
                 </ImageUploadAndMask>
-              </motion.div>
+                </motion.div>
             </div>
             <div>
               <DesignGrid
@@ -198,14 +198,14 @@ export default function GapFiller() {
                 RealSocialSharing={() => null}
               />
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-6">
-                <h4 className="font-medium text-green-900 mb-2">
-                  Gap Filler Tips:
-                </h4>
-                <ul className="text-sm text-green-800 space-y-1">
+                      <h4 className="font-medium text-green-900 mb-2">
+                        Gap Filler Tips:
+                      </h4>
+                      <ul className="text-sm text-green-800 space-y-1">
                   <li>• Minimalist style works well for small spaces</li>
-                  <li>• Small designs heal faster and age well</li>
-                </ul>
-              </div>
+                        <li>• Small designs heal faster and age well</li>
+                      </ul>
+                    </div>
             </div>
           </div>
         </div>

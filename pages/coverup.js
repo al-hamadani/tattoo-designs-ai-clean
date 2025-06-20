@@ -98,9 +98,9 @@ export default function CoverUp() {
 
   return (
     <Layout
-      title="Cover Up Tattoo Generator"
+        title="Cover Up Tattoo Generator"
       description="Generate custom cover-up tattoo designs that effectively conceal unwanted tattoos with AI."
-      keywords="cover up tattoo, tattoo cover up ideas, tattoo cover up designs, hide old tattoo"
+        keywords="cover up tattoo, tattoo cover up ideas, tattoo cover up designs, hide old tattoo"
     >
       <main className="min-h-screen pt-20 pb-12 bg-gray-50">
         <div className="max-w-6xl mx-auto px-6">
