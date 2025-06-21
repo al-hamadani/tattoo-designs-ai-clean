@@ -5,6 +5,14 @@ import { randomUUID } from 'crypto';
 import { logAPIError } from '../../lib/sentry';
 import { getDefaultAIServiceManager } from '../../lib/ai-services/manager';
 
+// CRITICAL: Export maxDuration at module level for Vercel
+export const config = {
+  maxDuration: 60, // 60 seconds timeout
+};
+
+// Alternative syntax if using newer Next.js:
+// export const maxDuration = 60;
+
 export default async function handler(req, res) {
   // Global error boundary
   try {
