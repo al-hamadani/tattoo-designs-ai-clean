@@ -4,6 +4,13 @@ import { withSentryConfig } from '@sentry/nextjs'
 
 const nextConfig = {
   reactStrictMode: true,
+  /**
+   * Disable Next.js' built‑in Image Optimizer so it never loads `sharp`
+   * (keeps the old behaviour you had on v13).
+   */
+  images: {
+    unoptimized: true,
+  },
   webpack: (config, { isServer }) => {
     // Handle WASM files
     config.experiments = {
