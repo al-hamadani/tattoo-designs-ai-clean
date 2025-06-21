@@ -116,44 +116,67 @@ export default function GapFiller() {
       console.log('🔥 Enhanced Gap Filler Prompt:', enhancedPrompt)
       console.log('🚫 Enhanced Negative Prompt:', enhancedNegativePrompt)
       
-      const response = await fetch('/api/generate-tattoo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: enhancedPrompt,
-          negativePrompt: enhancedNegativePrompt,
-          style: selectedStyle,
-          originalImage: uploadedImage,
-          maskData: maskData,
-          guidanceScale: 9.0, // Higher guidance for better adherence
-          gapFillerMode: true // Flag for API optimizations
+      try {
+        const response = await fetch('/api/generate-tattoo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: enhancedPrompt,
+            negativePrompt: enhancedNegativePrompt,
+            style: selectedStyle,
+            originalImage: uploadedImage,
+            maskData: maskData,
+            guidanceScale: 9.0,
+            gapFillerMode: true
+          })
         })
-      })
-      
-      const data = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(data.message || data.error || 'Failed to generate gap filler designs')
+        
+        // Handle non-JSON responses
+        let data
+        const contentType = response.headers.get("content-type")
+        
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+          data = await response.json()
+        } else {
+          // If response is not JSON, read as text
+          const text = await response.text()
+          console.error('Non-JSON response from API:', text)
+          data = {
+            success: false,
+            message: `Server error: ${text.substring(0, 100)}...`,
+            error: 'Invalid response format'
+          }
+        }
+        
+        if (!response.ok) {
+          throw new Error(data.message || data.error || 'Failed to generate gap filler designs')
+        }
+        
+        // Handle both new (images array) and old (imageURL) format
+        const finalImageUrl = data.images?.[0] || data.imageURL
+        
+        if (!finalImageUrl) {
+          throw new Error('No image generated - please try again')
+        }
+        
+        const newDesign = {
+          id: Date.now(),
+          url: finalImageUrl,
+          style: selectedStyle,
+          theme: selectedTheme,
+          prompt: customPrompt || `${selectedTheme} gap filler`,
+          enhancedPrompt: enhancedPrompt,
+          metadata: data.metadata
+        }
+        
+        setGeneratedDesigns([newDesign])
+
+      } catch (err) {
+        console.error('Gap Filler generation error:', err)
+        setError(err.message || 'Failed to generate gap filler designs. Please try again.')
+      } finally {
+        setIsGenerating(false)
       }
-      
-      // Handle both new (images array) and old (imageURL) format
-      const finalImageUrl = data.images?.[0] || data.imageURL
-      
-      if (!finalImageUrl) {
-        throw new Error('No image generated - please try again')
-      }
-      
-      const newDesign = {
-        id: Date.now(),
-        url: finalImageUrl,
-        style: selectedStyle,
-        theme: selectedTheme,
-        prompt: customPrompt || `${selectedTheme} gap filler`,
-        enhancedPrompt: enhancedPrompt,
-        metadata: data.metadata
-      }
-      
-      setGeneratedDesigns([newDesign])
 
     } catch (err) {
       console.error('Gap Filler generation error:', err)
