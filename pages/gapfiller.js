@@ -15,7 +15,7 @@ import Navigation from '../components/Navigation'
 import StyleSelector from '../components/generate/StyleSelector'
 import DesignGrid from '../components/generate/DesignGrid'
 import ImageUploadAndMask from '../components/generate/ImageUploadAndMask'
-import { buildTattooPrompt } from '../lib/promptBuilder' // Enhanced Prompt Builder
+import { buildTattooPrompt, buildTattooNegativePrompt } from '../lib/promptBuilder'
 import Layout from '../components/Layout'
 
 export default function GapFiller() {
@@ -43,6 +43,25 @@ export default function GapFiller() {
     { value: 'dots', label: 'Dot Work', description: 'Stippling, dot patterns, pointillism' }
   ]
 
+  const STYLE_SPECIFIC_TEMPLATES = {
+    minimalist: {
+      stars: 'delicate single-needle star patterns, fine line cosmic dots',
+      floral: 'minimal botanical linework, simple leaf outlines',
+      geometric: 'clean geometric shapes, fine line triangles and circles',
+      symbols: 'simple single-line symbols, minimalist iconic shapes',
+    },
+    traditional: {
+      stars: 'bold traditional stars, classic nautical star fillers',
+      floral: 'simple traditional flower head, small bold leaves',
+      symbols: 'classic traditional symbols, bold and simple icons',
+    },
+    blackwork: {
+      geometric: 'solid black geometric fillers, negative space patterns',
+      abstract: 'bold abstract black shapes, solid blackwork filler',
+      ornamental: 'blackwork ornamental filigree, bold decorative patterns',
+    },
+  };
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0]
     if (file) {
@@ -56,7 +75,7 @@ export default function GapFiller() {
     }
   }
 
-  // Enhanced gap filler generation with professional prompts
+  // Enhanced generateGapFiller function
   const generateGapFiller = async () => {
     if (!drawingCanvasRef.current) {
       setError('Please upload an image and mark the gap areas first')
@@ -74,53 +93,51 @@ export default function GapFiller() {
         throw new Error('Please draw on the image to mark gap areas')
       }
       
-      // Build enhanced prompt for gap fillers
+      // Use style-specific templates if available, otherwise use custom prompt or theme description
       let basePrompt = customPrompt.trim()
+      const styleTemplate = STYLE_SPECIFIC_TEMPLATES[selectedStyle]?.[selectedTheme]
       
-      if (!basePrompt) {
+      if (!basePrompt && styleTemplate) {
+        basePrompt = styleTemplate
+        console.log(`🎨 Using style-specific template: "${basePrompt}"`)
+      } else if (!basePrompt) {
         const selectedThemeData = gapFillerThemes.find(t => t.value === selectedTheme)
         basePrompt = selectedThemeData ? selectedThemeData.description : 'small gap filler elements'
       }
       
-      // Use professional prompt builder for gap fillers
+      // Build enhanced prompt for gap fillers
       const enhancedPrompt = buildTattooPrompt(basePrompt, selectedStyle, 'gapfiller', {
         theme: selectedTheme,
-        complexity: 'simple', // Gap fillers should be simple
-        placement: 'custom-gapfiller',
-        size: 'small'
       })
       
+      // Use enhanced negative prompts for gap fillers
+      const enhancedNegativePrompt = buildTattooNegativePrompt('gapfiller')
+      
       console.log('🔥 Enhanced Gap Filler Prompt:', enhancedPrompt)
+      console.log('🚫 Enhanced Negative Prompt:', enhancedNegativePrompt)
       
       const response = await fetch('/api/generate-tattoo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: enhancedPrompt,
+          negativePrompt: enhancedNegativePrompt,
           style: selectedStyle,
-          complexity: 'simple',
-          placement: 'custom-gapfiller',
-          size: 'small',
           originalImage: uploadedImage,
-          maskData: maskData
+          maskData: maskData,
+          guidanceScale: 9.0, // Higher guidance for better adherence
+          gapFillerMode: true // Flag for API optimizations
         })
       })
       
       const data = await response.json()
       
-      console.log('Gap Filler API Response:', data)
-      
-      if (!data.success) {
+      if (!response.ok) {
         throw new Error(data.message || data.error || 'Failed to generate gap filler designs')
       }
       
       // Handle both new (images array) and old (imageURL) format
-      let finalImageUrl = null
-      if (data.images && data.images.length > 0) {
-        finalImageUrl = data.images[0]
-      } else if (data.imageURL) {
-        finalImageUrl = data.imageURL
-      }
+      const finalImageUrl = data.images?.[0] || data.imageURL
       
       if (!finalImageUrl) {
         throw new Error('No image generated - please try again')

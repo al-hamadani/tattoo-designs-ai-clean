@@ -12,6 +12,7 @@ export default async function handler(req, res) {
 
   const { 
     prompt, 
+    negativePrompt,
     style = 'traditional', 
     complexity = 'medium', 
     placement = 'generic', 
@@ -19,7 +20,9 @@ export default async function handler(req, res) {
     originalImage, 
     maskData, 
     secondaryStyle = 'none',
-    numVariations = 1
+    numVariations = 1,
+    guidanceScale,
+    gapFillerMode
   } = req.body;
 
   if (!prompt || !prompt.trim()) {
@@ -48,6 +51,29 @@ export default async function handler(req, res) {
     
     let result;
     let maskAnalysis = null;
+    
+    // Build generation options
+    const generationOptions = {
+      style,
+      complexity,
+      placement,
+      size,
+      secondaryStyle,
+      numVariations,
+      negativePrompt,
+      guidanceScale,
+    };
+
+    // Gap filler specific optimizations
+    if (gapFillerMode) {
+      console.log(`Gap Filler Mode optimizations enabled [${taskUUID}]`);
+      // Override or set higher guidance for small, precise designs
+      generationOptions.guidanceScale = Math.max(guidanceScale || 0, 9.0);
+      // Ensure sufficient steps for detail
+      // This is illustrative; actual parameter name may vary by provider
+      // e.g., num_inference_steps. We pass it in options for the provider to use.
+      generationOptions.num_inference_steps = Math.max(generationOptions.num_inference_steps || 0, 40);
+    }
 
     // Determine generation method based on inputs
     if (maskData && originalImage) {
@@ -72,12 +98,8 @@ export default async function handler(req, res) {
 
       // Enhanced inpainting generation
       result = await aiManager.generateWithMask(prompt, originalImage, maskData, {
-        style,
+        ...generationOptions,
         complexity: complexity === 'simple' ? 'complex' : complexity, // Minimum complexity for coverups
-        placement,
-        size,
-        secondaryStyle,
-        numVariations
       });
       
       generationMethod = 'enhanced_inpainting';
@@ -86,14 +108,7 @@ export default async function handler(req, res) {
       console.log(`Enhanced text-to-image generation [${taskUUID}]`);
       
       // Enhanced standard generation
-      result = await aiManager.generateImage(prompt, {
-        style,
-        complexity,
-        placement,
-        size,
-        secondaryStyle,
-        numVariations
-      });
+      result = await aiManager.generateImage(prompt, generationOptions);
       
       generationMethod = 'enhanced_text2img';
     }
