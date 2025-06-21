@@ -15,6 +15,7 @@
     "@sentry/replay": "^7.116.0",
     "@vercel/analytics": "^1.1.1",
     "canvas": "^3.1.1",
+    "esm": "^3.2.25",
     "framer-motion": "^10.18.0",
     "lucide-react": "^0.294.0",
     "next": "14.0.4",
