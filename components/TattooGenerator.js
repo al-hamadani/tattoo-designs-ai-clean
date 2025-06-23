@@ -73,7 +73,7 @@ const TattooGenerator = () => {
       setError('Please describe your tattoo idea')
       return
     }
-    console.log('[TattooGenerator] Starting generation...');
+    // console.log('[TattooGenerator] Starting generation...');
     setIsGenerating(true)
     setError('')
     setGeneratedImage(null)
@@ -95,7 +95,7 @@ const TattooGenerator = () => {
         placement,
         size
       };
-      console.log('[TattooGenerator] Sending request to /api/generate-tattoo with body:', JSON.stringify(requestBody, null, 2));
+      // console.log('[TattooGenerator] Sending request to /api/generate-tattoo with body:', JSON.stringify(requestBody, null, 2));
 
       const response = await fetch('/api/generate-tattoo', {
         method: 'POST',
@@ -104,21 +104,21 @@ const TattooGenerator = () => {
       })
 
       setGenerationStage('enhancing')
-      console.log('[TattooGenerator] Received response from API. Status:', response.status);
+      // console.log('[TattooGenerator] Received response from API. Status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[TattooGenerator] API response not OK. Body:', errorText);
+        // console.error('[TattooGenerator] API response not OK. Body:', errorText);
         throw new Error(`API Error: ${response.statusText}`);
       }
 
       const data = await response.json()
-      console.log('[TattooGenerator] API response JSON data:', data);
+      // console.log('[TattooGenerator] API response JSON data:', data);
 
       if (!data.success) throw new Error(data.message || 'Generation failed')
       
       setGenerationStage('finalizing')
-      console.log(`[TattooGenerator] Setting generated image URL: ${data.imageURL}`);
+      // console.log(`[TattooGenerator] Setting generated image URL: ${data.imageURL}`);
       setTimeout(() => {
         setGeneratedImage(data.imageURL)
         setIsGenerating(false)
@@ -128,7 +128,7 @@ const TattooGenerator = () => {
         style: primaryStyle, complexity, placement, size
       })
     } catch (err) {
-      console.error('[TattooGenerator] An error occurred in handleGenerate:', err);
+      // console.error('[TattooGenerator] An error occurred in handleGenerate:', err);
       setError(err.message || 'Failed to generate tattoo. Please try again.')
       setIsGenerating(false)
       trackEvent('generate_tattoo_error', {
@@ -151,7 +151,7 @@ const TattooGenerator = () => {
       link.click()
       window.URL.revokeObjectURL(url)
     } catch (error) {
-      console.error('Download failed:', error)
+      // console.error('Download failed:', error)
     }
   }
 
@@ -393,8 +393,6 @@ const TattooGenerator = () => {
                         alt="Generated tattoo design"
                         className="w-full h-auto rounded-lg"
                         aspectRatio="aspect-square"
-                        onLoad={() => console.log(`[TattooGenerator] Image loaded successfully from src: ${generatedImage}`)}
-                        onError={() => console.error(`[TattooGenerator] Image failed to load from src: ${generatedImage}`)}
                       />
                     </div>
                     <div>
@@ -403,10 +401,7 @@ const TattooGenerator = () => {
                         src={generatedImage}
                         alt="Debug tattoo"
                         className="w-full h-auto rounded-lg border-2 border-blue-300"
-                        onLoad={() => console.log('✅ Direct img tag loaded successfully')}
                         onError={(e) => {
-                          console.error('❌ Direct img tag failed to load:', e)
-                          console.error('Failed URL:', generatedImage)
                         }}
                       />
                     </div>

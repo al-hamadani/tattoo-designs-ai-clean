@@ -1,7 +1,6 @@
 import { User, SwitchCamera, Sliders, X, RotateCcw, Download, ZoomIn, ZoomOut, Info, Eye, EyeOff } from "lucide-react";
 import { BodyPartSelector } from './BodyPartSelector';
-// Add debug log
-console.log('BodyPartSelector imported:', BodyPartSelector);
+// console.log('BodyPartSelector imported:', BodyPartSelector);
 export const ARControls = ({
   show,
   settings,

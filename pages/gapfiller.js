@@ -99,7 +99,7 @@ export default function GapFiller() {
       
       if (!basePrompt && styleTemplate) {
         basePrompt = styleTemplate
-        console.log(`🎨 Using style-specific template: "${basePrompt}"`)
+        // console.log(`🎨 Using style-specific template: "${basePrompt}"`)
       } else if (!basePrompt) {
         const selectedThemeData = gapFillerThemes.find(t => t.value === selectedTheme)
         basePrompt = selectedThemeData ? selectedThemeData.description : 'small gap filler elements'
@@ -113,8 +113,8 @@ export default function GapFiller() {
       // Use enhanced negative prompts for gap fillers
       const enhancedNegativePrompt = buildTattooNegativePrompt('gapfiller')
       
-      console.log('🔥 Enhanced Gap Filler Prompt:', enhancedPrompt)
-      console.log('🚫 Enhanced Negative Prompt:', enhancedNegativePrompt)
+      // console.log('🔥 Enhanced Gap Filler Prompt:', enhancedPrompt)
+      // console.log('🚫 Enhanced Negative Prompt:', enhancedNegativePrompt)
       
       try {
         const response = await fetch('/api/generate-tattoo', {

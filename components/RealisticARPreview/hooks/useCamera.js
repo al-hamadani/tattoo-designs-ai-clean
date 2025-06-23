@@ -4,7 +4,7 @@ export const useCamera = (videoRef, facingMode) => {
   const streamRef = useRef(null);
 
   const stopCamera = useCallback(() => {
-    console.log("🛑 Stopping camera...");
+    // console.log("🛑 Stopping camera...");
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -23,7 +23,7 @@ export const useCamera = (videoRef, facingMode) => {
       }
 
       stopCamera();
-      console.log("📸 Starting camera...");
+      // console.log("📸 Starting camera...");
 
       // Ensure video element exists
       if (!videoRef.current) {
@@ -65,7 +65,7 @@ export const useCamera = (videoRef, facingMode) => {
   
       await videoRef.current.play();
       
-      console.log("✅ Camera started successfully");
+      // console.log("✅ Camera started successfully");
       
       return {
         width: videoRef.current.videoWidth,
@@ -73,7 +73,7 @@ export const useCamera = (videoRef, facingMode) => {
       };
       
     } catch (err) {
-      console.error("❌ Camera error:", err);
+      // console.error("❌ Camera error:", err);
       stopCamera();
 
       let errorMessage = 'Camera access failed';
@@ -94,7 +94,7 @@ export const useCamera = (videoRef, facingMode) => {
   const switchCamera = useCallback(() => {
     // Parent component should handle facingMode state change
     // This will trigger a restart with new facingMode
-    console.log("🔄 Switching camera...");
+    // console.log("🔄 Switching camera...");
   }, []);
 
   return {

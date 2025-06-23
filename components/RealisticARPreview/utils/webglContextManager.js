@@ -8,12 +8,12 @@ export const webglContextManager = {
   
   registerContext() {
     activeContexts++;
-    console.log(`WebGL contexts active: ${activeContexts}`);
+    // console.log(`WebGL contexts active: ${activeContexts}`);
   },
   
   unregisterContext() {
     activeContexts = Math.max(0, activeContexts - 1);
-    console.log(`WebGL contexts active: ${activeContexts}`);
+    // console.log(`WebGL contexts active: ${activeContexts}`);
   },
   
   getActiveCount() {

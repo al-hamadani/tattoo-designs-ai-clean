@@ -236,8 +236,8 @@ const getBaseTransform = (bodyPart, landmarks, detectedParts, dimensions, settin
 const autoDetectTransform = ({ detectedParts, landmarks, segmentationMask, dimensions, settings, design }) => {
   const { width, height } = dimensions;
   
-  console.log('🎯 Auto-detecting best body part...');
-  console.log('Detected parts:', detectedParts);
+  // console.log('🎯 Auto-detecting best body part...');
+  // console.log('Detected parts:', detectedParts);
   
   const candidates = [
     { key: 'rightArm',  landmarks: ['rightShoulder','rightElbow','rightWrist'], transform: () => getArmTransform('right', landmarks, detectedParts, dimensions, settings, design) },
@@ -249,18 +249,18 @@ const autoDetectTransform = ({ detectedParts, landmarks, segmentationMask, dimen
 
   candidates.forEach(c => {
     c.score = scoreBodyPart({ keys: c.landmarks, landmarks, mask: segmentationMask, width, height });
-    console.log(`Score for ${c.key}: ${c.score}`);
+    // console.log(`Score for ${c.key}: ${c.score}`);
   });
   
   candidates.sort((a,b) => b.score - a.score);
   const best = candidates[0];
   
   if (!best || best.score < 0.25) {
-    console.log('❌ No suitable body part found for auto-detect');
+    // console.log('❌ No suitable body part found for auto-detect');
     return { visible: false };
   }
   
-  console.log(`✅ Auto-detected best body part: ${best.key} with score ${best.score}`);
+  // console.log(`✅ Auto-detected best body part: ${best.key} with score ${best.score}`);
   
   const transform = best.transform();
   // Add the detected body part key to the transform

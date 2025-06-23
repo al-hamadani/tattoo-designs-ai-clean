@@ -14,19 +14,19 @@ export const useMediaPipe = ({ onPoseResults, onSegmentationResults }) => {
 
   const initModels = useCallback(async () => {
     if (isInitializing) {
-      console.log('⏳ Already initializing...');
+      // console.log('⏳ Already initializing...');
       return;
     }
 
     isInitializing = true;
 
     try {
-      console.log('🚀 Loading MediaPipe...');
+      // console.log('🚀 Loading MediaPipe...');
       const { Pose, SelfieSegmentation } = await loadMediaPipe();
 
       // Initialize Pose
       if (!poseInstance) {
-        console.log('📦 Creating Pose Detection...');
+        // console.log('📦 Creating Pose Detection...');
         const pose = new Pose({
           locateFile: (file) => {
             return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
@@ -51,7 +51,7 @@ export const useMediaPipe = ({ onPoseResults, onSegmentationResults }) => {
 
       // Initialize Selfie Segmentation
       if (!segmentationInstance) {
-        console.log('📦 Creating Selfie Segmentation...');
+        // console.log('📦 Creating Selfie Segmentation...');
         const segmentation = new SelfieSegmentation({
           locateFile: (file) => {
             return `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`;
@@ -71,9 +71,9 @@ export const useMediaPipe = ({ onPoseResults, onSegmentationResults }) => {
       }
 
       setModelsReady(true);
-      console.log('🎉 All models ready!');
+      // console.log('🎉 All models ready!');
     } catch (error) {
-      console.error('❌ MediaPipe initialization failed:', error);
+      // console.error('❌ MediaPipe initialization failed:', error);
     } finally {
       isInitializing = false;
     }
@@ -81,34 +81,34 @@ export const useMediaPipe = ({ onPoseResults, onSegmentationResults }) => {
 
   const sendFrame = useCallback(async (videoElement) => {
     if (!segRef.current || !poseRef.current) {
-      console.warn('⚠️ Models not ready for sendFrame', {
-        seg: !!segRef.current,
-        pose: !!poseRef.current
-      });
+      // console.warn('⚠️ Models not ready for sendFrame', {
+      //   seg: !!segRef.current,
+      //   pose: !!poseRef.current
+      // });
       return;
     }
 
     if (!videoElement || videoElement.readyState < 2) {
-      console.warn('⚠️ Video not ready', videoElement?.readyState);
+      // console.warn('⚠️ Video not ready', videoElement?.readyState);
       return;
     }
 
     try {
       if (segRef.current?.send) {
-        console.log('   → Sending to segmentation...');
+        // console.log('   → Sending to segmentation...');
         await segRef.current.send({ image: videoElement });
       } else {
-        console.warn('   ⚠️ Segmentation send method not available');
+        // console.warn('   ⚠️ Segmentation send method not available');
       }
 
       if (poseRef.current?.send) {
-        console.log('   → Sending to pose...');
+        // console.log('   → Sending to pose...');
         await poseRef.current.send({ image: videoElement });
       } else {
-        console.warn('   ⚠️ Pose send method not available');
+        // console.warn('   ⚠️ Pose send method not available');
       }
     } catch (error) {
-      console.error('❌ Error sending frame:', error);
+      // console.error('❌ Error sending frame:', error);
     }
   }, []);
 

@@ -72,8 +72,8 @@ export default function CoverUp() {
       // Use enhanced negative prompts for cover-ups
       const enhancedNegativePrompt = buildTattooNegativePrompt('coverup')
       
-      console.log('🔥 Enhanced Cover-Up Prompt:', enhancedPrompt)
-      console.log('🚫 Enhanced Negative Prompt:', enhancedNegativePrompt)
+      // console.log('🔥 Enhanced Cover-Up Prompt:', enhancedPrompt)
+      // console.log('🚫 Enhanced Negative Prompt:', enhancedNegativePrompt)
       
       try {
         const response = await fetch('/api/generate-tattoo', {

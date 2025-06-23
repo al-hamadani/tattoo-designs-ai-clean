@@ -12,7 +12,7 @@ export const warpToBody = ({ mesh, bodyPart, landmarks, meshHints }) => {
   
   // For custom geometries created by BodyMeshGenerator, warping is already built-in
   if (!isPlaneGeometry) {
-    console.log('🔄 Custom geometry detected, warping already applied');
+    // console.log('🔄 Custom geometry detected, warping already applied');
     
     // Only handle UV adjustments for twist if needed
     if (meshHints && meshHints.twist && Math.abs(meshHints.twist) > 0.1) {

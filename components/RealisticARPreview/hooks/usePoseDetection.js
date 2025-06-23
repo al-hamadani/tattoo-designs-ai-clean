@@ -68,16 +68,16 @@ export const usePoseDetection = () => {
   });
 
   const processResults = useCallback((results) => {
-    console.log('🎯 Processing pose results:', results);
+    // console.log('🎯 Processing pose results:', results);
     
     if (!results.poseLandmarks) {
-      console.log('❌ No pose landmarks found');
+      // console.log('❌ No pose landmarks found');
       setLandmarks({});
       setDetectedParts({});
       return;
     }
 
-    console.log('✅ Pose landmarks found:', results.poseLandmarks.length);
+    // console.log('✅ Pose landmarks found:', results.poseLandmarks.length);
 
     const lms = results.poseLandmarks;
     const newLandmarks = { ...landmarks };
@@ -192,7 +192,7 @@ export const usePoseDetection = () => {
             orientation = normal.z < 0 ? 'front' : 'back';
           }
         } catch (err) {
-          console.warn('orientation calc failed', err);
+          // console.warn('orientation calc failed', err);
         }
       } else {
         // Fallback orientation estimate using widths

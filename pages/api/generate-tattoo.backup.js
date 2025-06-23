@@ -30,7 +30,7 @@ export default async function handler(req, res) {
 
     const taskUUID = randomUUID();
 
-    console.log('Generating professional tattoo with prompt:', enhancedPrompt);
+    // console.log('Generating professional tattoo with prompt:', enhancedPrompt);
 
     // API call with optimized parameters for high quality
     const response = await fetch('https://api.runware.ai/v1', {

@@ -90,8 +90,8 @@ export default function RealSocialSharing({ imageUrl, design, onClose }) {
           text: shareText,
           url: websiteUrl,
         })
-      } catch (err) {
-        console.log('Share cancelled or failed')
+      } catch {
+        // console.log('Share cancelled or failed')
       }
     }
   }

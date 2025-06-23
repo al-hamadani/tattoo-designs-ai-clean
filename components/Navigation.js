@@ -28,7 +28,8 @@ export default function Navigation() {
     { href: '/gapfiller', label: 'Gap Filler' },  // NEW
     { href: '/styles', label: 'Styles' },
     { href: '/how-it-works', label: 'How It Works' },
-    { href: '/gallery', label: 'Gallery' }
+    { href: '/gallery', label: 'Gallery' },
+    { href: '/pricing', label: 'Pricing' }
   ]
 
   const isActive = (href) => router.pathname === href

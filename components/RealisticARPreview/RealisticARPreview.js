@@ -68,7 +68,7 @@ export default function RealisticARPreview({ imageUrl, design, onClose }) {
     poseRef, segRef, initModels, sendFrame, modelsReady
   } = useMediaPipe({
     onPoseResults: useCallback((results) => {
-      console.log('📍 Pose results received');
+      // console.log('📍 Pose results received');
       processResults(results); // This should call the pose detection hook
     }, []),
     onSegmentationResults: useCallback((results) => {
@@ -244,7 +244,7 @@ const processSegmentation = useCallback((results) => {
 
     const timeSinceLastCallback = Date.now() - lastCallbackRef.current;
     if (timeSinceLastCallback > 1000 && frameCountRef.current > 10) {
-      console.warn('⚠️ No callbacks for', timeSinceLastCallback, 'ms');
+      // console.warn('⚠️ No callbacks for', timeSinceLastCallback, 'ms');
     }
 
     if (!processingRef.current && modelsReadyRef.current) {
@@ -470,7 +470,7 @@ const processSegmentation = useCallback((results) => {
         onClick={() => {
           if (!dragging) {
             setShowControls(true);
-            console.log('Canvas clicked, showing controls');
+            // console.log('Canvas clicked, showing controls');
           }
         }}
       />

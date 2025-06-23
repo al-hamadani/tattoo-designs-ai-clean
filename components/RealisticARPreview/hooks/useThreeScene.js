@@ -31,25 +31,25 @@ export const useThreeScene = (imageUrl) => {
     setTattooImage(null);
 
     if (!imageUrl) {
-      console.log('ℹ️ No image URL provided, clearing tattoo image.');
+      // console.log('ℹ️ No image URL provided, clearing tattoo image.');
       return;
     }
 
-    console.log('🖼️ Loading tattoo image:', imageUrl);
+    // console.log('🖼️ Loading tattoo image:', imageUrl);
     const img = new window.Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
-      console.log('✅ Tattoo image loaded:', {
-        naturalWidth: img.naturalWidth,
-        naturalHeight: img.naturalHeight,
-        width: img.width,
-        height: img.height,
-        src: img.src
-      });
+      // console.log('✅ Tattoo image loaded:', {
+      //   naturalWidth: img.naturalWidth,
+      //   naturalHeight: img.naturalHeight,
+      //   width: img.width,
+      //   height: img.height,
+      //   src: img.src
+      // });
       setTattooImage(img);
     };
     img.onerror = (err) => {
-      console.error("❌ Failed to load tattoo image:", imageUrl, err);
+      // console.error("❌ Failed to load tattoo image:", imageUrl, err);
       setTattooImage(null);
     };
     img.src = imageUrl;
@@ -59,19 +59,19 @@ export const useThreeScene = (imageUrl) => {
   // Find the updateTexture function and remove the incorrect lines
 const updateTexture = useCallback((loadedImg) => {
   if (!meshRef.current || !meshRef.current.material) {
-    console.error('🎨 updateTexture: Mesh or material not ready.');
+    // console.error('🎨 updateTexture: Mesh or material not ready.');
     return;
   }
   
   if (!loadedImg || !loadedImg.complete || loadedImg.naturalWidth === 0) {
-    console.error('🎨 updateTexture: Image not ready or invalid for texture creation:', loadedImg);
+    // console.error('🎨 updateTexture: Image not ready or invalid for texture creation:', loadedImg);
     if (meshRef.current.material.map) meshRef.current.material.map.dispose();
     meshRef.current.material.map = null;
     meshRef.current.material.needsUpdate = true;
     return;
   }
 
-  console.log('🎨 Attempting to update texture with image:', loadedImg.src);
+  // console.log('🎨 Attempting to update texture with image:', loadedImg.src);
 
   if (textureRef.current) {
     textureRef.current.dispose();
@@ -96,11 +96,11 @@ const updateTexture = useCallback((loadedImg) => {
 
       textureRef.current = texture;
 
-      console.log('✅ Texture loaded and applied via TextureLoader');
+      // console.log('✅ Texture loaded and applied via TextureLoader');
     },
     undefined,
     (error) => {
-      console.error('❌ TextureLoader failed:', error);
+      // console.error('❌ TextureLoader failed:', error);
     }
   );
 }, []);
@@ -109,11 +109,11 @@ const updateTexture = useCallback((loadedImg) => {
 
   // Initialize Three.js scene
   const initThree = useCallback((width, height) => {
-    console.log('🎮 Initializing Three.js scene with dimensions:', width, height);
+    // console.log('🎮 Initializing Three.js scene with dimensions:', width, height);
     setIsMeshReady(false);
 
     if (!webglContextManager.canCreateContext()) {
-      console.error('❌ Cannot create more WebGL contexts');
+      // console.error('❌ Cannot create more WebGL contexts');
       return;
     }
 
@@ -182,7 +182,7 @@ const updateTexture = useCallback((loadedImg) => {
     meshRef.current.castShadow = true;
     sceneRef.current.add(meshRef.current);
 
-    console.log('✅ Three.js initialized with enhanced lighting');
+    // console.log('✅ Three.js initialized with enhanced lighting');
     setIsMeshReady(true);
   }, []);
 
@@ -194,7 +194,7 @@ const updateTexture = useCallback((loadedImg) => {
       return; // Skip if same body part
     }
 
-    console.log('🔄 Updating mesh for body part:', bodyPart);
+    // console.log('🔄 Updating mesh for body part:', bodyPart);
 
     const newGeometry = meshGeneratorRef.current.getMeshForBodyPart(
       bodyPart,
@@ -212,7 +212,7 @@ const updateTexture = useCallback((loadedImg) => {
       
       currentBodyPartRef.current = bodyPart;
       
-      console.log('✅ Mesh updated for body part:', bodyPart);
+      // console.log('✅ Mesh updated for body part:', bodyPart);
     }
   }, []);
 
@@ -220,7 +220,7 @@ const updateTexture = useCallback((loadedImg) => {
 const updateMesh = useCallback((transform, bodyPart, landmarks, dimensions) => {
   if (!meshRef.current || !transform) return;
   
-  console.log('📐 Updating mesh for body part:', bodyPart, 'with hints:', transform.meshHints);
+  // console.log('📐 Updating mesh for body part:', bodyPart, 'with hints:', transform.meshHints);
   
   // Update geometry if body part changed
   if (bodyPart && bodyPart !== 'manual' && landmarks && dimensions) {
@@ -267,7 +267,7 @@ const updateMesh = useCallback((transform, bodyPart, landmarks, dimensions) => {
 
   // Cleanup
   const cleanup = useCallback(() => {
-    console.log('🧹 Cleaning up Three.js scene...');
+    // console.log('🧹 Cleaning up Three.js scene...');
     setIsMeshReady(false);
     
     if (rendererRef.current) {
@@ -301,7 +301,7 @@ const updateMesh = useCallback((transform, bodyPart, landmarks, dimensions) => {
     currentBodyPartRef.current = null;
     
     webglContextManager.unregisterContext();
-    console.log('🧹 Three.js scene cleanup complete.');
+    // console.log('🧹 Three.js scene cleanup complete.');
   }, []);
 
   useEffect(() => {
