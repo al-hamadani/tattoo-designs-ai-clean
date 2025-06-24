@@ -4,7 +4,7 @@
 import { randomUUID } from 'crypto';
 import { logAPIError } from '../../lib/sentry';
 import { getDefaultAIServiceManager } from '../../lib/ai-services/manager';
-import { getUserByEmail } from '../../lib/database';
+import { getUserByEmail } from '@/lib/database.js' 
 import { supabase } from '../../lib/supabase';
 import jwt from 'jsonwebtoken';
 import { parse } from 'cookie';
