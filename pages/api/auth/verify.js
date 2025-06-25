@@ -1,4 +1,4 @@
-import { verifyMagicToken, generateSessionToken, setSessionCookie } from '../../../../lib/auth.js'
+import { verifyMagicToken, generateSessionToken, setSessionCookie } from '@/lib/auth.js'
 import { getUserByEmail } from '@/lib/database.js'
 import jwt from 'jsonwebtoken'
 import { serialize } from 'cookie'

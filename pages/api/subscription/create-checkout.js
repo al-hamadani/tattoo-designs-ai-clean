@@ -1,4 +1,4 @@
-import { getCurrentUser } from '../../../lib/auth.js'
+import { getCurrentUser } from '@/lib/auth.js'
 import { createCheckoutSession } from '../../../lib/stripe.js'
 
 export default async function handler(req, res) {

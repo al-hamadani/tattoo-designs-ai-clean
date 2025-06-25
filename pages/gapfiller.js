@@ -224,18 +224,7 @@ export default function GapFiller() {
               between your existing tattoos and get AI-designed elements that tie everything together.
             </p>
             
-            {/* Professional Enhancement Indicator */}
-            <motion.div
-              className="mt-6 inline-flex items-center gap-2 bg-gradient-to-r from-green-100 to-blue-100 px-4 py-2 rounded-full border border-green-200"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.3 }}
-            >
-              <Sparkles className="w-4 h-4 text-green-600" />
-              <span className="text-sm font-medium text-green-800">
-                Enhanced Gap Filler Prompts
-              </span>
-            </motion.div>
+          
           </motion.div>
           
           <div className="grid lg:grid-cols-2 gap-8">
@@ -260,8 +249,8 @@ export default function GapFiller() {
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3 mb-4">
                     <Info className="w-5 h-5 text-blue-600 mt-0.5" />
                     <p className="text-sm text-blue-800">
-                      Draw circles or shapes in the gaps where you want filler tattoos. 
-                      The AI will generate designs that fit perfectly in these spaces.
+                    Draw circles or shapes where you want gap filler tattoos. 
+                    The AI will create designs that perfectly fit these marked areas.
                     </p>
                   </div>
 

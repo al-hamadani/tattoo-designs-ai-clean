@@ -1,12 +1,12 @@
-// pages/generate.js - Clean Enhanced Version with Professional Prompt Builder
-import { useState, useRef } from 'react'
+// pages/generate.js - Updated with all requested changes
+import { useState, useRef, useEffect } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  Sparkles, Wand2, Download, Heart, Share2, RefreshCw, 
+  Sparkles, Wand2, Download, Share2, RefreshCw, 
   ChevronLeft, ChevronRight, Maximize2, Camera, Loader2,
-  Palette, Zap, Eye, Settings, Info
+  Palette, Zap, Eye, Settings, Info, Lock
 } from 'lucide-react'
 import SEO from '../components/SEO'
 import RealSocialSharing from '../components/RealSocialSharing'
@@ -19,7 +19,8 @@ import ComplexitySelector from '../components/generate/ComplexitySelector'
 import DesignGrid from '../components/generate/DesignGrid'
 import GenerationForm from '../components/generate/GenerationForm'
 import Layout from '../components/Layout'
-import { buildTattooPrompt } from '../lib/promptBuilder' // Enhanced Professional Prompt Builder
+import { buildTattooPrompt } from '../lib/promptBuilder'
+
 
 // Use the dynamic wrapper
 const RealisticARPreview = dynamic(
@@ -31,6 +32,24 @@ import { useRouter } from 'next/router'
 
 export default function Generate() {
   const router = useRouter()
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+  
+  // Add useEffect to fetch user status
+  useEffect(() => {
+    fetch('/api/user/status')
+      .then(res => res.json())
+      .then(data => {
+        if (data.isAuthenticated) {
+          setUser({
+            ...data.user,
+            subscription_status: data.subscription
+          })
+        }
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
   const [prompt, setPrompt] = useState('')
   const [primaryStyle, setPrimaryStyle] = useState('traditional')
   const [secondaryStyle, setSecondaryStyle] = useState('none')
@@ -48,16 +67,19 @@ export default function Generate() {
   
   const promptInputRef = useRef(null)
 
+  // Check if user has pro subscription
+  const isPro = user?.subscription_status === 'pro'
+
   // Enhanced Professional Prompt Builder
   const generateEnhancedPrompt = () => {
     const randomSeed = Math.random().toString(36).substring(7)
     
     // Use the professional prompt builder with all advanced options
     const enhancedPrompt = buildTattooPrompt(prompt, primaryStyle, 'generate', {
-      complexity,
-      placement, 
-      size,
-      secondaryStyle,
+      complexity: isPro ? complexity : 'medium',
+      placement: isPro ? placement : 'generic', 
+      size: isPro ? size : 'medium',
+      secondaryStyle: isPro ? secondaryStyle : 'none',
       randomSeed
     })
     
@@ -86,10 +108,10 @@ export default function Generate() {
         body: JSON.stringify({
           prompt: enhancedPrompt,
           style: primaryStyle,
-          complexity,
-          placement,
-          size,
-          secondaryStyle
+          complexity: isPro ? complexity : 'medium',
+          placement: isPro ? placement : 'generic',
+          size: isPro ? size : 'medium',
+          secondaryStyle: isPro ? secondaryStyle : 'none'
         })
       })
       
@@ -111,11 +133,10 @@ export default function Generate() {
         prompt: prompt,
         enhancedPrompt: enhancedPrompt,
         style: primaryStyle,
-        complexity,
-        placement,
-        size,
+        complexity: isPro ? complexity : 'medium',
+        placement: isPro ? placement : 'generic',
+        size: isPro ? size : 'medium',
         url: finalImageUrl,
-        liked: false,
         metadata: data.metadata
       }
       
@@ -154,22 +175,22 @@ export default function Generate() {
     setShowAR(true)
   }
 
-  const toggleFavorite = (designId) => {
-    setFavorites(prev => 
-      prev.includes(designId) 
-        ? prev.filter(id => id !== designId)
-        : [...prev, designId]
-    )
-  }
-
   const regenerateWithVariations = async (design) => {
     await handleGenerate()
+  }
+
+  const handleAdvancedToggle = () => {
+    if (!isPro) {
+      router.push('/pricing')
+    } else {
+      setShowAdvanced(!showAdvanced)
+    }
   }
 
   return (
     <Layout
       title="AI Tattoo Generator"
-      description="Create unique tattoo designs with our advanced AI. Choose from 20+ styles, customize complexity, and generate unlimited designs."
+      description="Transform your ideas into stunning tattoo designs with AI. Choose your style, customize details, and get professional-quality artwork instantly."
     >
       <SEO 
         title="AI Tattoo Generator - Create Custom Designs Instantly"
@@ -196,7 +217,7 @@ export default function Generate() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
-              Describe your vision and watch it come to life with professional AI-generated designs
+              Transform your ideas into stunning tattoo designs with AI. Professional quality, endless possibilities.
             </motion.p>
             
             {/* Professional Enhancement Indicator */}
@@ -208,7 +229,7 @@ export default function Generate() {
             >
               <Sparkles className="w-5 h-5 text-purple-600" />
               <span className="text-sm font-medium text-purple-800">
-                Enhanced with Professional Tattoo Terminology
+                AI-Powered Design Engine
               </span>
             </motion.div>
           </div>
@@ -227,9 +248,6 @@ export default function Generate() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-3">
                       Describe your dream tattoo
-                      <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
-                        Enhanced with Pro Terminology
-                      </span>
                     </label>
                     <div className="relative">
                       <textarea
@@ -239,7 +257,7 @@ export default function Generate() {
                         placeholder="A majestic wolf howling at the moon"
                         className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-gray-900 placeholder-gray-400"
                         rows={4}
-                        maxLength={500}
+                        maxLength={100}
                       />
                       <button
                         onClick={() => setPrompt('')}
@@ -249,11 +267,9 @@ export default function Generate() {
                       </button>
                     </div>
                     <div className="flex justify-between items-center mt-2">
-                      <div className="text-xs text-gray-500">
-                        Try: "{examplePrompts[Math.floor(Math.random() * examplePrompts.length)]}"
-                      </div>
+                     
                       <div className="text-xs text-gray-400">
-                        {prompt.length}/500
+                        {prompt.length}/100
                       </div>
                     </div>
                   </div>
@@ -266,22 +282,43 @@ export default function Generate() {
                     setSecondaryStyle={setSecondaryStyle}
                     tattooStyles={tattooStyles}
                     showAdvanced={showAdvanced}
-                    setShowAdvanced={setShowAdvanced}
+                    setShowAdvanced={handleAdvancedToggle}
+                    isPro={isPro}
                   />
 
-                  {/* Advanced Options */}
-                  <ComplexitySelector
-                    showAdvanced={showAdvanced}
-                    complexity={complexity}
-                    setComplexity={setComplexity}
-                    placement={placement}
-                    setPlacement={setPlacement}
-                    size={size}
-                    setSize={setSize}
-                    complexityLevels={complexityLevels}
-                    placementOptions={placementOptions}
-                    sizeOptions={sizeOptions}
-                  />
+                  {/* Advanced Options - Pro Only */}
+                  {!isPro && showAdvanced === false && (
+                    <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-4 border border-purple-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Lock className="w-5 h-5 text-purple-600" />
+                          <div>
+                            <p className="font-medium text-gray-900">Advanced Options</p>
+                            <p className="text-sm text-gray-600">Unlock complexity, placement, and size controls</p>
+                          </div>
+                        </div>
+                        <Link href="/pricing" className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors">
+                          Upgrade to Pro
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Advanced Options Content */}
+                  {isPro && (
+                    <ComplexitySelector
+                      showAdvanced={showAdvanced}
+                      complexity={complexity}
+                      setComplexity={setComplexity}
+                      placement={placement}
+                      setPlacement={setPlacement}
+                      size={size}
+                      setSize={setSize}
+                      complexityLevels={complexityLevels}
+                      placementOptions={placementOptions}
+                      sizeOptions={sizeOptions}
+                    />
+                  )}
 
                   {/* Generate Button */}
                   <button
@@ -302,41 +339,27 @@ export default function Generate() {
                     )}
                   </button>
 
-                  {/* Example Prompts */}
-                  <div className="bg-gray-50 rounded-xl p-6 border border-gray-100">
-                    <h4 className="text-sm font-medium text-gray-700 mb-4">🎯 Popular Ideas:</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {examplePrompts.slice(0, 6).map((example, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => setPrompt(example)}
-                          className="text-left text-sm text-blue-600 hover:text-blue-700 p-3 bg-white rounded-lg hover:bg-blue-50 transition-colors border border-gray-100"
-                        >
-                          {example}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                 
                 </div>
               </motion.div>
             </div>
 
-            {/* Results Area */}
+            {/* Results Area - Modified without like functionality */}
             <DesignGrid
-              generatedDesigns={generatedDesigns}
-              isGenerating={isGenerating}
-              downloadImage={downloadImage}
-              handleShareClick={handleShareClick}
-              handleARClick={handleARClick}
-              toggleFavorite={toggleFavorite}
-              regenerateWithVariations={regenerateWithVariations}
-              error={error}
-              selectedDesign={selectedDesign}
-              setSelectedDesign={setSelectedDesign}
-              showAR={showAR}
-              showSocialSharing={showSocialSharing}
-              RealSocialSharing={RealSocialSharing}
-            />
+  generatedDesigns={generatedDesigns}
+  isGenerating={isGenerating}
+  downloadImage={downloadImage}
+  handleShareClick={handleShareClick}
+  regenerateWithVariations={regenerateWithVariations}
+  error={error}
+  selectedDesign={selectedDesign}
+  setSelectedDesign={setSelectedDesign}
+  showAR={showAR}
+  showSocialSharing={showSocialSharing}
+  RealSocialSharing={RealSocialSharing}
+  user={user}
+  isPro={isPro}
+/>
           </div>
         </div>
       </main>

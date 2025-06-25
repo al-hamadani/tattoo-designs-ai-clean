@@ -5,7 +5,7 @@ import { buildTattooPrompt, truncateToTokenLimit } from '../../lib/promptBuilder
 
 // CRITICAL: Export maxDuration at module level for Vercel
 export const config = {
-  maxDuration: 120, // 120 seconds timeout for dual generation
+  maxDuration: 60, // 120 seconds timeout for dual generation
 };
 
 export default async function handler(req, res) {

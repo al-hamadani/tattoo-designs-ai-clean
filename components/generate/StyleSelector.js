@@ -1,7 +1,8 @@
+// components/generate/StyleSelector.js - Updated with Pro lock
 import { AnimatePresence, motion } from 'framer-motion';
-import { Settings, ChevronRight } from 'lucide-react';
+import { Settings, ChevronRight, Lock } from 'lucide-react';
 
-export default function StyleSelector({ tattooStyles, primaryStyle, setPrimaryStyle, secondaryStyle, setSecondaryStyle, showAdvanced, setShowAdvanced }) {
+export default function StyleSelector({ tattooStyles, primaryStyle, setPrimaryStyle, secondaryStyle, setSecondaryStyle, showAdvanced, setShowAdvanced, isPro }) {
   return (
     <div>
       {/* Quick Style Selection */}
@@ -23,19 +24,23 @@ export default function StyleSelector({ tattooStyles, primaryStyle, setPrimarySt
           </button>
         ))}
       </div>
-      {/* Advanced Options Toggle and All Styles */}
+      {/* Advanced Options Toggle */}
       <div className="flex items-center justify-between mt-4">
         <button
-          onClick={() => setShowAdvanced(!showAdvanced)}
+          onClick={() => setShowAdvanced()}
           className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium transition-colors"
         >
-          <Settings className="w-4 h-4" />
+          {isPro ? (
+            <Settings className="w-4 h-4" />
+          ) : (
+            <Lock className="w-4 h-4" />
+          )}
           Advanced Options
-          <ChevronRight className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`} />
+          <ChevronRight className={`w-4 h-4 transition-transform ${showAdvanced && isPro ? 'rotate-90' : ''}`} />
         </button>
       </div>
       <AnimatePresence>
-        {showAdvanced && (
+        {showAdvanced && isPro && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
@@ -57,29 +62,31 @@ export default function StyleSelector({ tattooStyles, primaryStyle, setPrimarySt
                         ? 'bg-blue-600 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
-                    title={style.description}
                   >
                     {style.name}
                   </button>
                 ))}
               </div>
             </div>
-            {/* Secondary Style */}
+            {/* Secondary Style Blend */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                Mix with style (optional)
+                Secondary style blend (optional)
               </label>
               <select
                 value={secondaryStyle}
                 onChange={(e) => setSecondaryStyle(e.target.value)}
-                className="w-full p-3 bg-white border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="none">None - Pure Style</option>
-                {tattooStyles.map((style) => (
-                  <option key={style.id} value={style.id}>
-                    + {style.name}
-                  </option>
-                ))}
+                <option value="none">None</option>
+                {tattooStyles
+                  .filter(style => style.id !== primaryStyle)
+                  .map(style => (
+                    <option key={style.id} value={style.id}>
+                      {style.name}
+                    </option>
+                  ))
+                }
               </select>
             </div>
           </motion.div>
@@ -87,4 +94,4 @@ export default function StyleSelector({ tattooStyles, primaryStyle, setPrimarySt
       </AnimatePresence>
     </div>
   );
-} 
+}

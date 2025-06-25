@@ -1,7 +1,8 @@
-import { Download, Share2, Eye, Heart, RefreshCw, ChevronLeft } from 'lucide-react';
+// components/generate/DesignGrid.js - Updated without like functionality
+import { Download, Share2, Eye, RefreshCw, ChevronLeft } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
-export default function DesignGrid({ generatedDesigns, isGenerating, downloadImage, handleShareClick, handleARClick, toggleFavorite, regenerateWithVariations, error, selectedDesign, setSelectedDesign, showAR, showSocialSharing, RealSocialSharing }) {
+export default function DesignGrid({ generatedDesigns, isGenerating, downloadImage, handleShareClick, handleARClick, regenerateWithVariations, error, selectedDesign, setSelectedDesign, showAR, showSocialSharing, RealSocialSharing, isPro, user }) {
   return (
     <div className="lg:col-span-1">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-24">
@@ -22,7 +23,7 @@ export default function DesignGrid({ generatedDesigns, isGenerating, downloadIma
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <button
-                    onClick={() => downloadImage(design.url, design)}
+                    onClick={() => downloadImage(design)}
                     className="py-2 px-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center justify-center gap-2"
                   >
                     <Download className="w-4 h-4" />
@@ -35,39 +36,24 @@ export default function DesignGrid({ generatedDesigns, isGenerating, downloadIma
                     <Share2 className="w-4 h-4" />
                     Share
                   </button>
-                  <button
-                    onClick={() => handleARClick(design)}
-                    className="py-2 px-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium text-sm flex items-center justify-center gap-2"
-                  >
-                    <Eye className="w-4 h-4" />
-                    AR Preview
-                  </button>
-                  <button
-                    onClick={() => toggleFavorite(design.id)}
-                    className={`py-2 px-3 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2 ${
-                      design.liked ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    <Heart className={`w-4 h-4 ${design.liked ? 'fill-current' : ''}`} />
-                    {design.liked ? 'Liked' : 'Like'}
-                  </button>
-                </div>
-                <div className="text-xs text-gray-500 space-y-1 bg-gray-50 rounded-lg p-3">
-                  <p><strong>Style:</strong> {design.style}</p>
-                  <p><strong>Complexity:</strong> {design.complexity}</p>
-                  <p><strong>Placement:</strong> {design.placement}</p>
-                  <p><strong>Size:</strong> {design.size}</p>
+                  
                 </div>
               </div>
             ))}
             <div className="flex space-x-3">
               <button
-                onClick={regenerateWithVariations}
+                onClick={() => {
+                  if (!isPro && user?.generationsRemaining <= 0) {
+                    alert('No credits remaining. Upgrade to Pro for unlimited generations!');
+                    return;
+                  }
+                  regenerateWithVariations();
+                }}
                 disabled={isGenerating}
                 className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm flex items-center justify-center gap-2"
               >
                 <RefreshCw className="w-4 h-4" />
-                More Variations
+                More Variations {!isPro && `(${user?.generationsRemaining || 0} credits)`}
               </button>
             </div>
           </div>
@@ -113,49 +99,34 @@ export default function DesignGrid({ generatedDesigns, isGenerating, downloadIma
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
-                  <div className="p-6">
-                    <img
-                      src={selectedDesign.url}
-                      alt="Generated tattoo design"
-                      className="w-full h-auto rounded-lg"
-                    />
-                  </div>
+                  <img
+                    src={selectedDesign.url}
+                    alt="Tattoo design detail"
+                    className="w-full h-full object-contain p-8"
+                  />
                 </div>
-                <div className="md:w-2/5 p-8 flex flex-col">
-                  <div className="flex-1">
-                    <h3 className="text-2xl font-semibold mb-2">{selectedDesign.prompt}</h3>
-                    <p className="text-gray-600 mb-4">{selectedDesign.style} Style</p>
-                    <div className="space-y-3 mb-6">
-                      <button
-                        onClick={() => handleARClick(selectedDesign)}
-                        className="w-full py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
-                      >
-                        <Eye className="w-5 h-5" />
-                        Try On with AR
-                      </button>
-                      <div className="grid grid-cols-2 gap-3">
-                        <button 
-                          onClick={() => downloadImage(selectedDesign.url, selectedDesign)}
-                          className="py-3 border-2 border-gray-200 rounded-lg font-medium hover:border-gray-300 transition-colors flex items-center justify-center gap-2"
-                        >
-                          <Download className="w-4 h-4" />
-                          Download
-                        </button>
-                        <button 
-                          onClick={() => handleShareClick(selectedDesign)}
-                          className="py-3 border-2 border-gray-200 rounded-lg font-medium hover:border-gray-300 transition-colors flex items-center justify-center gap-2"
-                        >
-                          <Share2 className="w-4 h-4" />
-                          Share
-                        </button>
-                      </div>
+                <div className="md:w-2/5 p-8 overflow-y-auto">
+                  <h3 className="text-2xl font-bold mb-4">Design Details</h3>
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="font-medium text-gray-900 mb-2">Your Prompt</h4>
+                      <p className="text-gray-600">{selectedDesign.prompt}</p>
                     </div>
-                    <div className="text-sm text-gray-600 space-y-2 bg-gray-50 rounded-lg p-4">
-                      <p><strong>Style:</strong> {selectedDesign.style}</p>
-                      <p><strong>Complexity:</strong> {selectedDesign.complexity}</p>
-                      <p><strong>Placement:</strong> {selectedDesign.placement}</p>
-                      <p><strong>Size:</strong> {selectedDesign.size}</p>
-                      <p className="text-green-600">✅ 100% Unique Design</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <button
+                        onClick={() => downloadImage(selectedDesign)}
+                        className="py-3 px-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
+                      >
+                        <Download className="w-5 h-5" />
+                        Download HD
+                      </button>
+                      <button
+                        onClick={() => handleShareClick(selectedDesign)}
+                        className="py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+                      >
+                        <Share2 className="w-5 h-5" />
+                        Share
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -164,16 +135,24 @@ export default function DesignGrid({ generatedDesigns, isGenerating, downloadIma
           </motion.div>
         )}
       </AnimatePresence>
-      {/* Fixed Social Sharing Modal */}
+      {/* AR Preview Modal */}
       <AnimatePresence>
-        {showSocialSharing && selectedDesign && (
+        {showAR && (
           <RealSocialSharing
-            imageUrl={selectedDesign.url}
-            design={selectedDesign}
+            imageUrl={selectedDesign?.url}
+            onClose={() => setShowAR(false)}
+          />
+        )}
+      </AnimatePresence>
+      {/* Social Sharing Modal */}
+      <AnimatePresence>
+        {showSocialSharing && (
+          <RealSocialSharing
+            imageUrl={selectedDesign?.url}
             onClose={() => setShowSocialSharing(false)}
           />
         )}
       </AnimatePresence>
     </div>
   );
-} 
+}
