@@ -1,7 +1,7 @@
 import { buffer } from 'micro'
 import stripe from '../../../lib/stripe.js'
 import { supabase } from '../../../lib/supabase.js'
-import { getUserByEmail } from '../../lib/database'
+import { getUserByEmail } from '@/lib/database.js'
 import Stripe from 'stripe'
 
 const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY)

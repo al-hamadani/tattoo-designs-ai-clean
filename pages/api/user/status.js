@@ -1,4 +1,4 @@
-import { getUserByEmail } from '../../lib/database';
+import { getUserByEmail } from '@/lib/database.js'
 import jwt from 'jsonwebtoken'
 import { parse } from 'cookie'
 

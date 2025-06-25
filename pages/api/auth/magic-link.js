@@ -1,23 +1,23 @@
-import { generateMagicToken } from '../../../lib/auth.js'
-import { sendMagicLink } from '../../../lib/email.js'
-import { getUserByEmail, createUser } from '../../lib/database'
 import jwt from 'jsonwebtoken'
-import { sendMagicLinkEmail } from '../../lib/email'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
-
-  const { email } = req.body
-
-  if (!email || !email.includes('@')) {
-    return res.status(400).json({ error: 'Valid email required' })
+    return res.status(405).json({ message: 'Method not allowed' })
   }
 
   try {
-    // Get or create user
+    const { email } = req.body
+
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ message: 'Valid email required' })
+    }
+
+    // Dynamic imports
+    const { getUserByEmail, createUser } = await import('../../../lib/database')
+    const { sendMagicLinkEmail } = await import('../../../lib/email')
+
     let { data: user, error } = await getUserByEmail(email)
+
     if (!user) {
       const createResult = await createUser(email)
       user = createResult.data
@@ -27,14 +27,12 @@ export default async function handler(req, res) {
       }
     }
 
-    // Generate magic link token
     const token = jwt.sign(
       { userId: user.id, email: user.email },
       process.env.MAGIC_LINK_SECRET,
       { expiresIn: '15m' }
     )
     
-    // Send email (or log for development)
     const magicLink = `${process.env.NEXTAUTH_URL}/api/auth/verify?token=${token}`
     await sendMagicLinkEmail(email, magicLink)
 
@@ -44,6 +42,6 @@ export default async function handler(req, res) {
     })
   } catch (error) {
     console.error('Magic link error:', error)
-    res.status(500).json({ error: 'Failed to send magic link' })
+    res.status(500).json({ message: 'Failed to send magic link' })
   }
 } 
