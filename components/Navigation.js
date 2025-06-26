@@ -26,7 +26,6 @@ export default function Navigation() {
     { href: '/generate', label: 'Generate' },
     { href: '/coverup', label: 'Cover Up' },      // NEW
     { href: '/gapfiller', label: 'Gap Filler' },  // NEW
-    { href: '/styles', label: 'Styles' },
     { href: '/how-it-works', label: 'How It Works' },
     { href: '/gallery', label: 'Gallery' },
     { href: '/pricing', label: 'Pricing' }
