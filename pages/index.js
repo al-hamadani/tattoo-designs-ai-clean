@@ -309,7 +309,6 @@ export default function Home() {
               <h4 className="font-semibold text-white mb-4">Create</h4>
               <ul className="space-y-2">
                 <li><Link href="/generate" className="hover:text-white transition-colors">Start Designing</Link></li>
-                <li><Link href="/styles" className="hover:text-white transition-colors">Style Gallery</Link></li>
                 <li><Link href="/inspiration" className="hover:text-white transition-colors">Inspiration Board</Link></li>
               </ul>
             </div>
