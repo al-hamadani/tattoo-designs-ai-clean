@@ -18,8 +18,29 @@ import { buildTattooPrompt, buildTattooNegativePrompt } from '../lib/promptBuild
 import Navigation from '../components/Navigation'
 import Layout from '../components/Layout'
 
+const gapFillerThemes = [
+  { value: 'stars', label: 'Stars & Cosmos', description: 'Small stars, dots, celestial elements' },
+  { value: 'floral', label: 'Floral Elements', description: 'Tiny flowers, leaves, botanical details' },
+  { value: 'geometric', label: 'Geometric Shapes', description: 'Triangles, circles, minimal patterns' },
+  { value: 'symbols', label: 'Symbolic Elements', description: 'Small meaningful symbols and icons' },
+  { value: 'nature', label: 'Nature Details', description: 'Tiny animals, insects, natural elements' },
+  { value: 'abstract', label: 'Abstract Forms', description: 'Flowing lines, organic shapes' },
+  { value: 'ornamental', label: 'Ornamental', description: 'Decorative flourishes, filigree' },
+  { value: 'dots', label: 'Dot Work', description: 'Stippling, dot patterns, pointillism' }
+];
+const cohesivePrompts = {
+  stars: 'constellation map',
+  floral: 'botanical arrangement',
+  geometric: 'geometric mandala',
+  symbols: 'symbolic emblem',
+  nature: 'nature scene',
+  abstract: 'abstract composition',
+  ornamental: 'ornamental pattern',
+  dots: 'dotwork image'
+};
+
 export default function CoverUp() {
-  const [uploadedImage, setUploadedImage] = useState(null)
+  const [uploadedImage, setUploadedImage] = useState('white-canvas')
   const [selectedStyle, setSelectedStyle] = useState('blackwork')
   const [customPrompt, setCustomPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -28,6 +49,7 @@ export default function CoverUp() {
   const [showCamera, setShowCamera] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [secondaryStyle, setSecondaryStyle] = useState('none')
+  const [selectedTheme, setSelectedTheme] = useState('stars')
   
   const fileInputRef = useRef(null)
   const drawingCanvasRef = useRef(null)
@@ -45,10 +67,9 @@ export default function CoverUp() {
     }
   }
 
-  // Enhanced generateCoverUp function
   const generateCoverUp = async () => {
     if (!drawingCanvasRef.current) {
-      setError('Please upload an image and mark the cover-up areas first')
+      setError('Please draw the areas you want to cover up')
       return
     }
     
@@ -60,42 +81,56 @@ export default function CoverUp() {
       const maskData = drawingCanvasRef.current.getMaskData()
       
       if (!maskData) {
-        throw new Error('Please draw on the image to mark cover-up areas')
+        throw new Error('Please draw on the canvas to mark cover-up areas')
       }
       
-      const basePrompt = customPrompt.trim() || 'professional cover-up tattoo design'
+      const canvas = drawingCanvasRef.current.getMaskCanvas()
       
-      // Build enhanced prompt for cover-ups
-      const enhancedPrompt = buildTattooPrompt(basePrompt, selectedStyle, 'coverup', {
-        secondaryStyle
-      })
+      if (!canvas) {
+        throw new Error('Unable to get canvas data')
+      }
       
-      // Use enhanced negative prompts for cover-ups
-      const enhancedNegativePrompt = buildTattooNegativePrompt('coverup')
+      const canvasData = canvas.toDataURL('image/png')
+      
+      let basePrompt = customPrompt.trim() || cohesivePrompts[selectedTheme] || 'tattoo design'
+      
+      const enhancedPrompt = `one complete ${basePrompt}, unified ${selectedStyle} tattoo design`
+      
+      const enhancedNegativePrompt = 'multiple elements, scattered, separate, disconnected'
+      
+      const USE_NEW_GENERATION = false
+      
+      const requestBody = {
+        prompt: enhancedPrompt,
+        negativePrompt: enhancedNegativePrompt,
+        style: selectedStyle,
+        guidanceScale: 15.0,
+        gapFillerMode: true,
+        theme: selectedTheme,
+        maskData: maskData,
+        useDimensionGeneration: USE_NEW_GENERATION,
+      }
+      
+      if (USE_NEW_GENERATION) {
+        requestBody.maskData = maskData
+      } else {
+        requestBody.originalImage = canvasData
+        requestBody.maskData = maskData
+      }
       
       try {
         const response = await fetch('/api/generate-tattoo', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt: enhancedPrompt,
-            negativePrompt: enhancedNegativePrompt,
-            style: selectedStyle,
-            complexity: 'complex',
-            placement: 'custom-coverup',
-            size: 'custom',
-            maskData: maskData
-          })
+          body: JSON.stringify(requestBody)
         })
         
-        // Handle non-JSON responses
         let data
         const contentType = response.headers.get("content-type")
         
         if (contentType && contentType.indexOf("application/json") !== -1) {
           data = await response.json()
         } else {
-          // If response is not JSON, read as text
           const text = await response.text()
           console.error('Non-JSON response from API:', text)
           data = {
@@ -106,10 +141,9 @@ export default function CoverUp() {
         }
         
         if (!response.ok) {
-          throw new Error(data.message || data.error || 'Failed to generate cover-up design')
+          throw new Error(data.message || data.error || 'Failed to generate cover-up designs')
         }
         
-        // Handle both new (images array) and old (imageURL) format
         const finalImageUrl = data.images?.[0] || data.imageURL
         
         if (!finalImageUrl) {
@@ -120,7 +154,8 @@ export default function CoverUp() {
           id: Date.now(),
           url: finalImageUrl,
           style: selectedStyle,
-          prompt: basePrompt,
+          theme: selectedTheme,
+          prompt: customPrompt || `${selectedTheme} cover up`,
           enhancedPrompt: enhancedPrompt,
           metadata: data.metadata
         }
@@ -129,14 +164,14 @@ export default function CoverUp() {
 
       } catch (err) {
         console.error('Cover-Up generation error:', err)
-        setError(err.message || 'Failed to generate cover-up design. Please try again.')
+        setError(err.message || 'Failed to generate cover-up designs. Please try again.')
       } finally {
         setIsGenerating(false)
       }
 
     } catch (err) {
       console.error('Cover-Up generation error:', err)
-      setError(err.message || 'Failed to generate cover-up design. Please try again.')
+      setError(err.message || 'Failed to generate cover-up designs. Please try again.')
     } finally {
       setIsGenerating(false)
     }
@@ -238,6 +273,29 @@ export default function CoverUp() {
                     showAdvanced={showAdvanced}
                     setShowAdvanced={setShowAdvanced}
                   />
+                  
+                  {/* Theme Selection */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cover Up Theme
+                    </label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {gapFillerThemes.map((theme) => (
+                        <button
+                          key={theme.value}
+                          onClick={() => setSelectedTheme(theme.value)}
+                          className={`py-2 px-4 rounded-lg text-sm font-medium transition-all border-2 ${
+                            selectedTheme === theme.value
+                              ? 'border-blue-500 bg-blue-50 text-blue-900'
+                              : 'border-gray-200 hover:border-gray-300 bg-white'
+                          }`}
+                        >
+                          <span className="block font-semibold">{theme.label}</span>
+                          <span className="block text-xs text-gray-500">{theme.description}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   
                   {/* Generate Button */}
                   <button
