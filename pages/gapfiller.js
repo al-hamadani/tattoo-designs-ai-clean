@@ -118,23 +118,27 @@
       // Use enhanced negative prompts for gap fillers
       const enhancedNegativePrompt = buildTattooNegativePrompt('gapfiller')
       
+      // NEW: Feature flag for dimension-based generation
+      const USE_NEW_GENERATION = true; // Set to false for old behavior
+      const requestBody = {
+        prompt: enhancedPrompt,
+        negativePrompt: enhancedNegativePrompt,
+        style: selectedStyle,
+        guidanceScale: 9.0,
+        gapFillerMode: true,
+        useDimensionGeneration: USE_NEW_GENERATION,
+      };
+      if (USE_NEW_GENERATION) {
+        requestBody.maskData = maskData;
+      } else {
+        requestBody.originalImage = canvasData;
+        requestBody.maskData = maskData;
+      }
       try {
         const response = await fetch('/api/generate-tattoo', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt: enhancedPrompt,
-            negativePrompt: enhancedNegativePrompt,
-            style: selectedStyle,
-            // Use the real canvas as the base image
-            originalImage: canvasData,          // ⬅ SEND A VALID PNG DATA-URL
-            maskData: maskData,
-            guidanceScale: 9.0,
-            gapFillerMode: true
-            // TODO: Future implementation could use canvasData directly
-            // to generate tattoo matching exact drawing size
-            // drawingData: canvasData
-          })
+          body: JSON.stringify(requestBody)
         })
         
         // Handle non-JSON responses

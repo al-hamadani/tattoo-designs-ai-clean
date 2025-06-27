@@ -113,7 +113,8 @@ export default async function handler(req, res) {
       numVariations = 1,
       guidanceScale,
       gapFillerMode,
-      model = 'standard'
+      model = 'standard',
+      useDimensionGeneration,
     } = req.body;
 
     if (!prompt || !prompt.trim()) {
