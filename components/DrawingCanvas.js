@@ -25,12 +25,42 @@ const DrawingCanvas = forwardRef(({
   useImperativeHandle(ref, () => ({
     getMaskData: () => {
       if (!maskCanvasRef.current) return null
+      // Check if mask has any actual content
+      if (!hasMaskContent()) {
+        return null // Return null for empty masks instead of empty data URL
+      }
       return maskCanvasRef.current.toDataURL('image/png')
     },
     getMaskCanvas: () => maskCanvasRef.current,
     clearMask: () => clearDrawing(),
-    downloadMask: () => downloadMask()
+    downloadMask: () => downloadMask(),
+    hasMaskContent: () => hasMaskContent() // Expose validation method
   }))
+
+  // Add this new function after the useImperativeHandle block
+  const hasMaskContent = () => {
+    if (!maskCanvasRef.current) return false
+    
+    const maskCanvas = maskCanvasRef.current
+    const ctx = maskCanvas.getContext('2d')
+    const imageData = ctx.getImageData(0, 0, maskCanvas.width, maskCanvas.height)
+    const data = imageData.data
+    
+    // Check for white pixels (drawn content) instead of just alpha
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i]     // Red
+      const g = data[i + 1] // Green  
+      const b = data[i + 2] // Blue
+      const a = data[i + 3] // Alpha
+      
+      // Check if pixel is white-ish with good alpha (indicates drawn content)
+      if (r > 200 && g > 200 && b > 200 && a > 200) {
+        return true
+      }
+    }
+    
+    return false
+  }
 
   // Initialize canvases when image loads or for white canvas
   useEffect(() => {
