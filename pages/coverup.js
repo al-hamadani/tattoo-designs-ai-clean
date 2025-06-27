@@ -226,7 +226,7 @@ export default function CoverUp() {
                 transition={{ delay: 0.1 }}
                 className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"
               >
-                <h3 className="text-lg font-semibold mb-4">Step 1: Upload Your Photo</h3>
+                <h3 className="text-lg font-semibold mb-4">Draw Your Gap Filler Areas</h3>
                 
                 <ImageUploadAndMask
                   uploadedImage={uploadedImage}
