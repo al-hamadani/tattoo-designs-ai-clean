@@ -43,23 +43,16 @@
     { value: 'dots', label: 'Dot Work', description: 'Stippling, dot patterns, pointillism' }
   ]
 
-  const STYLE_SPECIFIC_TEMPLATES = {
-    minimalist: {
-      stars: 'delicate single-needle star patterns, fine line cosmic dots',
-      floral: 'minimal botanical linework, simple leaf outlines',
-      geometric: 'clean geometric shapes, fine line triangles and circles',
-      symbols: 'simple single-line symbols, minimalist iconic shapes',
-    },
-    traditional: {
-      stars: 'bold traditional stars, classic nautical star fillers',
-      floral: 'simple traditional flower head, small bold leaves',
-      symbols: 'classic traditional symbols, bold and simple icons',
-    },
-    blackwork: {
-      geometric: 'solid black geometric fillers, negative space patterns',
-      abstract: 'bold abstract black shapes, solid blackwork filler',
-      ornamental: 'blackwork ornamental filigree, bold decorative patterns',
-    },
+  // Simplified cohesive prompts
+  const cohesivePrompts = {
+    stars: 'constellation map',
+    floral: 'botanical arrangement',
+    geometric: 'geometric mandala',
+    symbols: 'symbolic emblem',
+    nature: 'nature scene',
+    abstract: 'abstract composition',
+    ornamental: 'ornamental pattern',
+    dots: 'dotwork image'
   };
 
   const handleImageUpload = (e) => {
@@ -103,29 +96,22 @@
       const canvasData = canvas.toDataURL('image/png')
       
       // Use custom prompt or theme description
-      let basePrompt = customPrompt.trim()
-      const selectedThemeData = gapFillerThemes.find(t => t.value === selectedTheme)
+      let basePrompt = customPrompt.trim() || cohesivePrompts[selectedTheme] || 'tattoo design';
       
-      if (!basePrompt) {
-        basePrompt = selectedThemeData ? selectedThemeData.description : 'small gap filler elements'
-      }
-      
-      // Build enhanced prompt for gap fillers
-      const enhancedPrompt = buildTattooPrompt(basePrompt, selectedStyle, 'gapfiller', {
-        theme: selectedTheme,
-      })
-      
-      // Use enhanced negative prompts for gap fillers
-      const enhancedNegativePrompt = buildTattooNegativePrompt('gapfiller')
+      // Build the prompt - DO NOT use buildTattooPrompt for gap fillers
+      const enhancedPrompt = `one complete ${basePrompt}, unified ${selectedStyle} tattoo design`;
+      const enhancedNegativePrompt = 'multiple elements, scattered, separate, disconnected';
       
       // NEW: Feature flag for dimension-based generation
-      const USE_NEW_GENERATION = true; // Set to false for old behavior
+      const USE_NEW_GENERATION = false; // Set to false for old behavior
       const requestBody = {
         prompt: enhancedPrompt,
         negativePrompt: enhancedNegativePrompt,
         style: selectedStyle,
-        guidanceScale: 9.0,
+        guidanceScale: 15.0,  // CRITICAL: Use 15.0, not 9.0
         gapFillerMode: true,
+        theme: selectedTheme,
+        maskData: maskData,
         useDimensionGeneration: USE_NEW_GENERATION,
       };
       if (USE_NEW_GENERATION) {
